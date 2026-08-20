@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,12 +21,58 @@ class NarrativeIdentity(BaseModel):
     cognitive_style: str | None = None
 
 
+class ClaimSource(BaseModel):
+    """证据来源：简历段落/对话轮次/反馈事件/行为。"""
+    kind: Literal["resume", "dialogue", "feedback", "behavior", "system"]
+    ref: str = ""
+
+class NarrativeClaim(BaseModel):
+    """α 假设机制（O1/D16）：叙事主张，trial→（M3 用户确认）→active；M1 只有 trial/archived。"""
+    text: str
+    state: Literal["trial", "archived"] = "trial"
+    evidence_count: int = 0
+    confidence: float = 0.5
+    sources: list[ClaimSource] = Field(default_factory=list)
+
+class SupportRelation(BaseModel):
+    kind: str = ""   # 导师/学长/家庭/内推人/朋友
+    note: str = ""
+
+class ExploitationRedline(BaseModel):
+    kind: str = ""   # 996/大小周/on_call/无偿加班/竞业限制/培训违约金/加班费模糊
+    stance: Literal["accept", "negotiable", "never"] = "negotiable"
+
+class ReproductionCosts(BaseModel):
+    housing: str = ""
+    commute: str = ""
+    food: str = ""
+    skill_half_life_years: float | None = None
+
+class MobilityStatus(BaseModel):
+    dare_bare_quit: bool = False
+    note: str = ""
+
+
 class StructuralPosition(BaseModel):
     """结构位置（D12）：研究阶段，自然语言 + 可扩展。"""
 
     material_conditions: str = ""
     social_relations: str = ""
     extra: dict[str, Any] = Field(default_factory=dict)
+
+    # —— 八格（O1 R3 / D17）：用户直填侧；市场侧(M2)入 market_assessment ——
+    cash_buffer: Literal["≤3个月", "约6个月", "约1年", "≥2年"] | None = None
+    stage: str = ""
+    city_constraints: list[str] = Field(default_factory=list)
+    family_duty: str = ""
+    support_network: list[SupportRelation] = Field(default_factory=list)
+    economic_independence: str = ""
+    family_payback: bool = False
+    reservation_wage: SalaryRange | None = None
+    market_assessment: dict[str, Any] = Field(default_factory=dict)  # 系统估（M2，带证据标注）
+    exploitation_redlines: list[ExploitationRedline] = Field(default_factory=list)
+    reproduction_costs: ReproductionCosts | None = None
+    mobility: MobilityStatus | None = None
 
 
 class RevealedChoice(BaseModel):
@@ -60,3 +106,4 @@ class Profile(BaseModel):
     utility_preferences: dict[str, OrdinalPreference] = Field(default_factory=dict)
     structural_position: StructuralPosition = Field(default_factory=StructuralPosition)
     revealed_preferences: list[RevealedChoice] = Field(default_factory=list)
+    narrative_claims: list[NarrativeClaim] = Field(default_factory=list)
