@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>工作性价比计算器 - 职场苦劳值测试</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#10B981", // Emerald Green
+                        secondary: "#F59E0B", // Amber
+                        dark: "#1F2937",
+                        "background-light": "#F3F4F6",
+                        "background-dark": "#111827",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "1rem",
+                        '2xl': '1.5rem',
+                        '3xl': '2rem',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                },
+            },
+        };
+    </script>
+    <style type="text/tailwindcss">
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-item:active {
+            transform: scale(0.98);
+            transition: transform 0.1s ease;
+        }
+        /* Green Gradient for Niuma */
+        .gradient-bg {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+        }
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+        }
+        
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #10B981;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex justify-center items-start">
+
+    <!-- App Container -->
+    <div class="relative w-full max-w-[430px] min-h-[100dvh] gradient-bg shadow-2xl overflow-hidden flex flex-col mx-auto bg-white">
+        
+        <!-- INTRO PAGE -->
+        <div id="page-intro" class="flex-1 flex flex-col px-6 pt-12 pb-10 z-10 animate-fade-in">
+            <header class="mb-8">
+                <div class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold mb-3 tracking-wide">
+                    工作性价比计算器
+                </div>
+                <h1 class="text-3xl font-extrabold text-gray-900 mb-3 leading-tight">
+                    职场苦劳值<br>
+                    <span class="text-primary">深度检测</span>
+                </h1>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    有些人的工位比监狱还拥挤。输入你的工资和工时，用科学（且扎心）的算法，算出你的真实时薪与“职场苦劳值”。
+                </p>
+            </header>
+
+            <div class="flex-1 flex items-center justify-center my-4">
+                <div class="w-64 h-64 bg-green-50 rounded-full flex items-center justify-center relative">
+                    <div class="absolute inset-0 border-4 border-green-200 rounded-full animate-pulse-slow"></div>
+                    <div class="relative z-10 flex text-6xl">
+                        <span class="filter drop-shadow-lg transform -rotate-12 -translate-x-2">💼</span>
+                        <span class="filter drop-shadow-lg transform rotate-12 translate-x-2">📈</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto space-y-4">
+                <div class="flex justify-between text-xs text-gray-500 px-2">
+                    <span>⏱ 约 1 分钟</span>
+                    <span>🎯 真实指数 500%</span>
+                </div>
+                <button onclick="app.start()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg shadow-gray-900/20 active:scale-95 transition-transform text-lg flex items-center justify-center gap-2">
+                    开始计算
+                    <span class="material-icons-round">bolt</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- INPUT PAGE -->
+        <div id="page-input" class="hidden flex-1 flex flex-col px-5 pt-6 pb-8 z-10 h-full">
+            <!-- Progress Header -->
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-sm font-bold text-gray-500">Step 1</span>
+                    <span class="text-xs text-gray-400">生存数据录入</span>
+                </div>
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary transition-all duration-300 ease-out" style="width: 33%"></div>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="glass-card rounded-[2rem] p-6 shadow-xl relative flex-1 flex flex-col mb-6 animate-slide-up overflow-y-auto custom-scrollbar">
+                <form id="calc-form" onsubmit="return false;" class="space-y-5">
+                    <!-- City Tier -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-1">
+                            <span class="material-icons-round text-purple-600 text-sm">location_city</span>
+                            所在城市等级
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="relative flex-1 min-w-[30%]">
+                                <input type="radio" name="city" id="city1" value="tier1" class="peer hidden" checked>
+                                <label for="city1" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-purple-50 rounded-xl cursor-pointer transition peer-checked:border-purple-500 peer-checked:bg-purple-50 text-center">
+                                    <span class="text-xs font-bold text-gray-700">北上广深</span>
+                                </label>
+                            </div>
+                            <div class="relative flex-1 min-w-[30%]">
+                                <input type="radio" name="city" id="city2" value="new-tier1" class="peer hidden">
+                                <label for="city2" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-purple-50 rounded-xl cursor-pointer transition peer-checked:border-purple-500 peer-checked:bg-purple-50 text-center">
+                                    <span class="text-xs font-bold text-gray-700">新一线/二线</span>
+                                </label>
+                            </div>
+                            <div class="relative flex-1 min-w-[30%]">
+                                <input type="radio" name="city" id="city3" value="other" class="peer hidden">
+                                <label for="city3" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-purple-50 rounded-xl cursor-pointer transition peer-checked:border-purple-500 peer-checked:bg-purple-50 text-center">
+                                    <span class="text-xs font-bold text-gray-700">三线及其他</span>
+                                </label>
+                            </div>
+                            <div class="relative flex-1 min-w-[30%]">
+                                <input type="radio" name="city" id="city4" value="remote" class="peer hidden">
+                                <label for="city4" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-purple-50 rounded-xl cursor-pointer transition peer-checked:border-purple-500 peer-checked:bg-purple-50 text-center">
+                                    <span class="text-xs font-bold text-gray-700">数字游民</span>
+                                </label>
+                            </div>
+                            <div class="relative flex-1 min-w-[30%]">
+                                <input type="radio" name="city" id="city5" value="overseas" class="peer hidden">
+                                <label for="city5" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-purple-50 rounded-xl cursor-pointer transition peer-checked:border-purple-500 peer-checked:bg-purple-50 text-center">
+                                    <span class="text-xs font-bold text-gray-700">🌐 海外/跨国</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Salary -->
+                    <div>
+                        <div class="flex items-end justify-between mb-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                                <span class="material-icons-round text-green-600 text-sm">payments</span>
+                                税前月薪 (元)
+                            </label>
+                            <span class="text-[10px] text-gray-400 font-medium">海外党请自行折算为人民币填写哦~</span>
+                        </div>
+                        <input type="number" id="salary" placeholder="别不好意思写，没人看" class="w-full rounded-xl border-gray-200 focus:border-green-500 focus:ring-green-500 bg-gray-50 text-lg font-bold p-3 transition-colors mb-4">
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-wider">发薪月数</label>
+                                <input type="number" id="salary-months" value="12" placeholder="默认12" class="w-full rounded-xl border-gray-200 focus:border-green-500 focus:ring-green-500 bg-gray-50 font-bold p-2 transition-colors text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-wider">额外年终奖(元)</label>
+                                <input type="number" id="bonus-money" placeholder="0" class="w-full rounded-xl border-gray-200 focus:border-green-500 focus:ring-green-500 bg-gray-50 font-bold p-2 transition-colors text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Working Days -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-1">
+                            <span class="material-icons-round text-blue-600 text-sm">calendar_today</span>
+                            月工作天数
+                        </label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="radio" name="days" id="d22" value="21.75" class="peer/d22 hidden" checked>
+                            <label for="d22" class="cursor-pointer border border-gray-200 rounded-xl p-3 text-center peer-checked/d22:border-green-500 peer-checked/d22:bg-green-50 peer-checked/d22:text-green-700 transition font-bold text-sm shadow-sm">
+                                双休<br><span class="text-[10px] font-normal text-gray-400">21.75天</span>
+                            </label>
+
+                            <input type="radio" name="days" id="d24" value="24" class="peer/d24 hidden">
+                            <label for="d24" class="cursor-pointer border border-gray-200 rounded-xl p-3 text-center peer-checked/d24:border-green-500 peer-checked/d24:bg-green-50 peer-checked/d24:text-green-700 transition font-bold text-sm shadow-sm">
+                                大小周<br><span class="text-[10px] font-normal text-gray-400">24天</span>
+                            </label>
+
+                            <input type="radio" name="days" id="d26" value="26" class="peer/d26 hidden">
+                            <label for="d26" class="cursor-pointer border border-gray-200 rounded-xl p-3 text-center peer-checked/d26:border-green-500 peer-checked/d26:bg-green-50 peer-checked/d26:text-green-700 transition font-bold text-sm shadow-sm">
+                                单休<br><span class="text-[10px] font-normal text-gray-400">26天</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Hours -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">日均工时</label>
+                            <div class="relative">
+                                <input type="number" id="work-hours" placeholder="9" class="w-full rounded-xl border-gray-200 focus:border-green-500 focus:ring-green-500 bg-gray-50 font-bold p-3 pl-3 pr-8 transition-colors">
+                                <span class="absolute right-3 top-3 text-gray-400 text-sm font-bold">h</span>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 pl-1">含隐形加班</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">通勤(往返)</label>
+                            <div class="relative">
+                                <input type="number" id="commute-hours" placeholder="1.5" class="w-full rounded-xl border-gray-200 focus:border-green-500 focus:ring-green-500 bg-gray-50 font-bold p-3 pl-3 pr-8 transition-colors">
+                                <span class="absolute right-3 top-3 text-gray-400 text-sm font-bold">h</span>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 pl-1">含等车发呆</p>
+                        </div>
+                    </div>
+
+                    <!-- Touch Fish -->
+                    <div class="pt-2">
+                        <label class="block text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider flex items-center justify-between">
+                            <span class="flex items-center gap-1"><span class="material-icons-round text-yellow-500 text-sm">pool</span>日均摸鱼时长</span>
+                            <span class="text-primary font-bold"><span id="fish-val">1</span>h</span>
+                        </label>
+                        <input type="range" id="fish-hours" min="0" max="8" step="0.5" value="1" class="w-full range-slider h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('fish-val').textContent=this.value">
+                        <div class="flex justify-between text-[10px] text-gray-400 mt-2 font-medium">
+                            <span>0h (劳模)</span>
+                            <span>8h (薪水小偷)</span>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="mt-auto pt-6">
+                    <button onclick="app.nextStep()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform">
+                        下一步：环境评估
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- FACTOR PAGE -->
+        <div id="page-factors" class="hidden flex-1 flex flex-col px-5 pt-6 pb-8 z-10 h-full">
+            <!-- Progress Header -->
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-sm font-bold text-gray-500">Step 2</span>
+                    <span class="text-xs text-gray-400">环境与成长评估</span>
+                </div>
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary transition-all duration-300 ease-out" style="width: 66%"></div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-[2rem] p-6 shadow-xl relative flex-1 flex flex-col mb-6 animate-slide-up overflow-y-auto custom-scrollbar">
+                <div class="space-y-6">
+                    <!-- Boss -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold">1</span>
+                            你的直属领导...
+                        </p>
+                        <div class="space-y-2">
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-red-50 cursor-pointer transition has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                                <input type="radio" name="boss" id="boss1" value="0.8" class="rounded-full text-red-500 focus:ring-red-500 border-gray-300 w-5 h-5">
+                                <span class="text-2xl">👹</span>
+                                <span class="text-xs font-medium text-gray-700">PUA大师/听不懂人话/朝令夕改</span>
+                            </label>
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="boss" id="boss2" value="1.0" class="rounded-full text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5" checked>
+                                <span class="text-2xl">😐</span>
+                                <span class="text-xs font-medium text-gray-700">普通工具人，无功无过</span>
+                            </label>
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-green-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="boss" id="boss3" value="1.2" class="rounded-full text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5">
+                                <span class="text-2xl">😇</span>
+                                <span class="text-xs font-medium text-gray-700">情绪稳定，愿意教东西，偶尔请客</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Message -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+                            下班后的微信群...
+                        </p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="relative">
+                                <input type="radio" name="msg" id="msg1" value="0.9" class="peer hidden">
+                                <label for="msg1" class="option-item h-full flex flex-col items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-red-50 rounded-xl cursor-pointer transition peer-checked:border-red-500 peer-checked:bg-red-50 text-center">
+                                    <span class="text-2xl">📢</span>
+                                    <span class="text-[10px] font-bold text-gray-600 leading-tight">24小时<br>待命</span>
+                                </label>
+                            </div>
+                            <div class="relative">
+                                <input type="radio" name="msg" id="msg2" value="1.0" class="peer hidden" checked>
+                                <label for="msg2" class="option-item h-full flex flex-col items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                    <span class="text-2xl">📱</span>
+                                    <span class="text-[10px] font-bold text-gray-600 leading-tight">偶尔<br>有事</span>
+                                </label>
+                            </div>
+                            <div class="relative">
+                                <input type="radio" name="msg" id="msg3" value="1.1" class="peer hidden">
+                                <label for="msg3" class="option-item h-full flex flex-col items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-green-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                    <span class="text-2xl">🔕</span>
+                                    <span class="text-[10px] font-bold text-gray-600 leading-tight">几乎<br>失联</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Environment -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xs font-bold">3</span>
+                            福利与环境 (多选)
+                        </p>
+                        <div class="space-y-2">
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-green-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="checkbox" id="bonus1" value="0.05" class="rounded text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5">
+                                <span class="text-xs font-medium text-gray-700">厕所自由 (带薪拉屎不计时)</span>
+                            </label>
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-green-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="checkbox" id="bonus2" value="0.05" class="rounded text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5" checked>
+                                <span class="text-xs font-medium text-gray-700">有零食/下午茶/健身房</span>
+                            </label>
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-red-50 cursor-pointer transition has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                                <input type="checkbox" id="bad1" value="-0.1" class="rounded text-red-500 focus:ring-red-500 border-gray-300 w-5 h-5">
+                                <span class="text-xs font-medium text-red-800">大小周/调休克扣/打卡严苛</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Growth -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">4</span>
+                            这份工作的成长性...
+                        </p>
+                        <div class="space-y-2">
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-red-50 cursor-pointer transition has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                                <input type="radio" name="growth" id="growth1" value="0.9" class="rounded-full text-red-500 focus:ring-red-500 border-gray-300 w-5 h-5">
+                                <span class="text-2xl">🛑</span>
+                                <span class="text-xs font-medium text-gray-700">重复性劳动/学不到东西</span>
+                            </label>
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="growth" id="growth2" value="1.0" class="rounded-full text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5" checked>
+                                <span class="text-2xl">🔄</span>
+                                <span class="text-xs font-medium text-gray-700">偶尔有新挑战/按部就班</span>
+                            </label>
+                            <label class="option-item flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-green-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="growth" id="growth3" value="1.2" class="rounded-full text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5">
+                                <span class="text-2xl">🚀</span>
+                                <span class="text-xs font-medium text-gray-700">核心项目/技能飞速提升</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-6 space-y-3">
+                    <button onclick="app.nextToBasics()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        下一步：个人基本盘
+                        <span class="material-icons-round text-sm">arrow_forward</span>
+                    </button>
+                    <button onclick="app.back()" class="w-full text-gray-400 text-xs font-medium py-2 hover:text-gray-600 transition">
+                        返回上一步
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BASICS PAGE -->
+        <div id="page-basics" class="hidden flex-1 flex flex-col px-5 pt-6 pb-8 z-10 h-full">
+            <!-- Progress Header -->
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-sm font-bold text-gray-500">Step 3</span>
+                    <span class="text-xs text-gray-400">个人基本盘评估</span>
+                </div>
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary transition-all duration-300 ease-out" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-[2rem] p-6 shadow-xl relative flex-1 flex flex-col mb-6 animate-slide-up overflow-y-auto custom-scrollbar">
+                <div class="space-y-6">
+                    <!-- Education & Stage -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">1</span>
+                            🎓 你的学历与资历加成
+                        </p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">当前阶段</label>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <div class="relative">
+                                        <input type="radio" name="career-stage" id="stage-newbie" value="newbie" class="peer hidden">
+                                        <label for="stage-newbie" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">刚出村的新手<br><span class="text-[10px] font-normal text-gray-400">(应届-1年)</span></span>
+                                        </label>
+                                    </div>
+                                    <div class="relative">
+                                        <input type="radio" name="career-stage" id="stage-skilled" value="skilled" class="peer hidden" checked>
+                                        <label for="stage-skilled" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">熟练工<br><span class="text-[10px] font-normal text-gray-400">(1-3年)</span></span>
+                                        </label>
+                                    </div>
+                                    <div class="relative">
+                                        <input type="radio" name="career-stage" id="stage-veteran" value="veteran" class="peer hidden">
+                                        <label for="stage-veteran" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">职场老鸟<br><span class="text-[10px] font-normal text-gray-400">(3-5年)</span></span>
+                                        </label>
+                                    </div>
+                                    <div class="relative">
+                                        <input type="radio" name="career-stage" id="stage-oldhand" value="oldhand" class="peer hidden">
+                                        <label for="stage-oldhand" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">老油条<br><span class="text-[10px] font-normal text-gray-400">(5年以上)</span></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">学历光环</label>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <div class="relative">
+                                        <input type="radio" name="edu-halo" id="edu-pragmatic" value="pragmatic" class="peer hidden">
+                                        <label for="edu-pragmatic" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">实用至上<br><span class="text-[10px] font-normal text-gray-400">(大专及以下)</span></span>
+                                        </label>
+                                    </div>
+                                    <div class="relative">
+                                        <input type="radio" name="edu-halo" id="edu-standard" value="standard" class="peer hidden" checked>
+                                        <label for="edu-standard" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">标准配置<br><span class="text-[10px] font-normal text-gray-400">(普通本科)</span></span>
+                                        </label>
+                                    </div>
+                                    <div class="relative">
+                                        <input type="radio" name="edu-halo" id="edu-boosted" value="boosted" class="peer hidden">
+                                        <label for="edu-boosted" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">学历加持<br><span class="text-[10px] font-normal text-gray-400">(硕士及以上/海归)</span></span>
+                                        </label>
+                                    </div>
+                                    <div class="relative">
+                                        <input type="radio" name="edu-halo" id="edu-topbuff" value="topbuff" class="peer hidden">
+                                        <label for="edu-topbuff" class="option-item flex items-center justify-center gap-2 p-3 border border-gray-100 bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition peer-checked:border-green-500 peer-checked:bg-green-50 text-center">
+                                            <span class="text-xs font-bold text-gray-700">顶级buff<br><span class="text-[10px] font-normal text-gray-400">(C9/985名校)</span></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Moat -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-bold">2</span>
+                            核心护城河（不可替代性/议价权）
+                        </p>
+                        <div class="space-y-2">
+                            <label class="option-item flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-red-50 cursor-pointer transition has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                                <input type="radio" name="moat" id="moatA" value="A" class="rounded-full text-red-500 focus:ring-red-500 border-gray-300 w-5 h-5 mt-1">
+                                <span class="text-xl leading-none mt-0.5">🔌</span>
+                                <span class="text-xs font-normal text-gray-400 leading-relaxed">
+                                    <span class="font-black text-gray-900">A. 随插随用的 U 盘（极易替代）</span><br>
+                                    “纯执行层。老板今天开掉我，明天招个大学生培训三天就能完美接我的班。”
+                                </span>
+                            </label>
+                            <label class="option-item flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="moat" id="moatB" value="B" class="rounded-full text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5 mt-1" checked>
+                                <span class="text-xl leading-none mt-0.5">🧱</span>
+                                <span class="text-xs font-normal text-gray-400 leading-relaxed">
+                                    <span class="font-black text-gray-900">B. 承上启下的承重墙（有一定壁垒）</span><br>
+                                    “熟练掌握业务流程或部分客户资源。我走了，公司短期内运转会很难受，交接至少得一个月。”
+                                </span>
+                            </label>
+                            <label class="option-item flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-green-50 cursor-pointer transition has-[:checked]:border-green-500 has-[:checked]:bg-green-50">
+                                <input type="radio" name="moat" id="moatC" value="C" class="rounded-full text-green-500 focus:ring-green-500 border-gray-300 w-5 h-5 mt-1">
+                                <span class="text-xl leading-none mt-0.5">👑</span>
+                                <span class="text-xs font-normal text-gray-400 leading-relaxed">
+                                    <span class="font-black text-gray-900">C. 掌握命脉的核心大爹（不可替代）</span><br>
+                                    “掌握核心技术代码/独家大客户/卡脖子资源。我敢掀桌子，因为我走了这块业务得塌半边天。”
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-6 space-y-3">
+                    <button onclick="app.calculate()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg shadow-gray-900/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        <span class="material-icons-round">analytics</span>
+                        生成分析报告
+                    </button>
+                    <button onclick="app.backToFactors()" class="w-full text-gray-400 text-xs font-medium py-2 hover:text-gray-600 transition">
+                        返回上一步
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT PAGE -->
+        <div id="page-result" class="hidden flex-1 flex flex-col z-10 h-full overflow-hidden bg-white">
+            <header class="px-6 pt-8 pb-4 shrink-0 bg-white">
+                <p class="text-primary text-sm font-bold mb-1">检测完成</p>
+                <h1 class="text-2xl font-extrabold text-gray-900">职场性价比报告</h1>
+            </header>
+
+            <main class="flex-1 overflow-y-auto custom-scrollbar px-6 pb-24">
+                
+                <!-- Main Result Card -->
+                <div id="result-card-bg" class="bg-white rounded-3xl p-8 text-center mb-6 shadow-xl shadow-gray-200 border border-gray-100 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="text-[10px] font-bold text-gray-400 mb-2 tracking-[0.2em] uppercase font-mono">
+                            Career Value Report
+                        </div>
+                        <h2 id="result-title" class="text-4xl font-black mb-1 tracking-tight text-gray-900">...</h2>
+                        <p id="result-subtitle" class="text-sm font-bold text-gray-500 mb-8 font-mono">...</p>
+                        
+                        <div class="mb-2">
+                            <div class="text-xs text-gray-400 mb-1 font-bold">真实时薪</div>
+                            <div class="flex items-baseline justify-center gap-1">
+                                <span class="text-6xl font-black font-display tracking-tighter text-gray-900" id="real-rate">0</span>
+                                <span class="text-lg font-bold text-gray-400">元/h</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+                        <span class="text-xs font-bold text-gray-400 block mb-1">含牛马量</span>
+                        <span class="font-black text-xl text-gray-800" id="niuma-percent">0%</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+                        <span class="text-xs font-bold text-gray-400 block mb-1">摸鱼回血</span>
+                        <span class="font-black text-xl text-yellow-500" id="fish-gain">+0元</span>
+                    </div>
+                </div>
+
+                <!-- Analysis Text -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2 mb-3">
+                        <span class="material-icons-round text-primary text-base">psychology</span>
+                        深度解析
+                    </h3>
+                    <div class="bg-green-50 rounded-2xl p-5 border border-green-100">
+                        <p id="result-desc" class="text-sm text-gray-700 leading-relaxed text-justify font-medium">
+                            ...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Core Indicators -->
+                <div class="bg-white rounded-3xl p-6 mb-6 shadow-sm border border-gray-100">
+                    <h3 class="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span class="material-icons-round text-primary text-base">assessment</span>
+                        核心指标评估
+                    </h3>
+                    <div class="mb-4">
+                        <canvas id="radarChart" class="w-full max-w-[300px] mx-auto"></canvas>
+                    </div>
+                    
+                    <!-- Star Rating -->
+                    <div class="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
+                        <span class="text-sm font-bold text-gray-700">性价比评分</span>
+                        <div class="flex text-yellow-400 gap-1" id="star-rating">
+                            <!-- Stars injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subdivision Analysis -->
+                <div class="mb-6 space-y-4">
+                    <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+                        <span class="material-icons-round text-blue-500 text-base">fact_check</span>
+                        成分拆解
+                    </h3>
+                    
+                    <!-- Commute Analysis -->
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex gap-4 items-start">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                            <span class="material-icons-round">commute</span>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-1">通勤地狱度</h4>
+                            <p id="commute-analysis" class="text-xs text-gray-800 font-medium leading-relaxed">...</p>
+                        </div>
+                    </div>
+
+                    <!-- City Analysis -->
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex gap-4 items-start">
+                        <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
+                            <span class="material-icons-round">location_city</span>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-1">城市生存难度</h4>
+                            <p id="city-analysis" class="text-xs text-gray-800 font-medium leading-relaxed">...</p>
+                        </div>
+                    </div>
+
+                    <!-- Growth Analysis -->
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex gap-4 items-start">
+                        <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                            <span class="material-icons-round">trending_up</span>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-1">成长潜力分析</h4>
+                            <p id="growth-analysis" class="text-xs text-gray-800 font-medium leading-relaxed">...</p>
+                        </div>
+                    </div>
+
+                    <!-- Value Analysis -->
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex gap-4 items-start">
+                        <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+                            <span class="material-icons-round">favorite</span>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-1">个人身价评估</h4>
+                            <p id="value-analysis" class="text-xs text-gray-800 font-medium leading-relaxed">...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="mt-4 mb-6">
+                    <button onclick="location.reload()" class="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        <span class="material-icons-round text-sm">refresh</span>
+                        换个姿势重测
+                    </button>
+                    <p class="text-center text-[10px] text-gray-400 mt-4">
+                        * 仅供娱乐，请勿将测试结果发送给老板
+                    </p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            data: {},
+
+            start() {
+                document.getElementById('page-intro').classList.add('hidden');
+                document.getElementById('page-input').classList.remove('hidden');
+            },
+
+            nextStep() {
+                const salary = document.getElementById('salary').value;
+                const workHours = document.getElementById('work-hours').value;
+                const commuteHours = document.getElementById('commute-hours').value;
+                const salaryMonths = document.getElementById('salary-months').value;
+                const bonusMoney = document.getElementById('bonus-money').value;
+
+                if (!salary || !workHours) {
+                    // Custom Alert using Tailwind styled div could be better, but native alert is fine for now
+                    alert('请填写工资和工时，哪怕是编的！');
+                    return;
+                }
+
+                this.data.salary = parseFloat(salary);
+                this.data.salaryMonths = parseFloat(salaryMonths) || 12;
+                this.data.bonusMoney = parseFloat(bonusMoney) || 0;
+                this.data.workHours = parseFloat(workHours);
+                this.data.commuteHours = parseFloat(commuteHours) || 0;
+                this.data.fishHours = parseFloat(document.getElementById('fish-hours').value);
+                this.data.days = parseFloat(document.querySelector('input[name="days"]:checked').value);
+                this.data.city = document.querySelector('input[name="city"]:checked').value;
+
+                document.getElementById('page-input').classList.add('hidden');
+                document.getElementById('page-factors').classList.remove('hidden');
+            },
+
+            nextToBasics() {
+                document.getElementById('page-factors').classList.add('hidden');
+                document.getElementById('page-basics').classList.remove('hidden');
+            },
+
+            back() {
+                document.getElementById('page-factors').classList.add('hidden');
+                document.getElementById('page-input').classList.remove('hidden');
+            },
+
+            backToFactors() {
+                document.getElementById('page-basics').classList.add('hidden');
+                document.getElementById('page-factors').classList.remove('hidden');
+            },
+
+            calculate() {
+                const bossMod = parseFloat(document.querySelector('input[name="boss"]:checked').value);
+                const msgMod = parseFloat(document.querySelector('input[name="msg"]:checked').value);
+                const growthMod = parseFloat(document.querySelector('input[name="growth"]:checked').value);
+                
+                let envMod = 1.0;
+                if(document.getElementById('bonus1').checked) envMod += 0.05;
+                if(document.getElementById('bonus2').checked) envMod += 0.05;
+                if(document.getElementById('bad1').checked) envMod -= 0.1;
+
+                const totalHoursPerMonth = this.data.days * (this.data.workHours + this.data.commuteHours);
+                
+                // 计算等效月薪 (将年终奖和发薪月数均摊到12个月)
+                const totalAnnualSalary = this.data.salary * this.data.salaryMonths + this.data.bonusMoney;
+                const equivMonthlySalary = totalAnnualSalary / 12;
+                
+                let baseRate = equivMonthlySalary / totalHoursPerMonth;
+
+                // --- Step 3: Personal Baseline ---
+                const stageEl = document.querySelector('input[name="career-stage"]:checked');
+                const eduEl = document.querySelector('input[name="edu-halo"]:checked');
+                const moatEl = document.querySelector('input[name="moat"]:checked');
+                const stage = stageEl ? stageEl.value : 'skilled';
+                const edu = eduEl ? eduEl.value : 'standard';
+                const moat = moatEl ? moatEl.value : 'B';
+
+                const stageModMap = { newbie: 0.85, skilled: 1.0, veteran: 1.1, oldhand: 1.2 };
+                const eduModMap = { pragmatic: 0.9, standard: 1.0, boosted: 1.08, topbuff: 1.15 };
+                const moatModMap = { A: 0.9, B: 1.0, C: 1.15 };
+                const personalMod = (stageModMap[stage] || 1.0) * (eduModMap[edu] || 1.0) * (moatModMap[moat] || 1.0);
+
+                this.data.stage = stage;
+                this.data.edu = edu;
+                this.data.moat = moat;
+
+                let finalRate = baseRate * bossMod * msgMod * envMod * growthMod * personalMod;
+                const fishRatio = this.data.fishHours / this.data.workHours;
+                finalRate = finalRate * (1 + fishRatio * 0.5);
+
+                this.showResult(finalRate, baseRate);
+            },
+
+            showResult(finalRate, baseRate) {
+                document.getElementById('page-factors').classList.add('hidden');
+                document.getElementById('page-basics').classList.add('hidden');
+                document.getElementById('page-result').classList.remove('hidden');
+
+                const rateEl = document.getElementById('real-rate');
+                
+                let start = 0;
+                const end = Math.round(finalRate * 10) / 10;
+                const duration = 1000;
+                const startTime = performance.now();
+
+                function update(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const ease = 1 - Math.pow(1 - progress, 4);
+                    const current = start + (end - start) * ease;
+                    rateEl.textContent = current.toFixed(1);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    }
+                }
+                requestAnimationFrame(update);
+
+                // --- B. Atmosphere Score ---
+                const bossVal = parseFloat(document.querySelector('input[name="boss"]:checked').value);
+                const msgVal = parseFloat(document.querySelector('input[name="msg"]:checked').value);
+                let envScore = 0;
+                if(document.getElementById('bonus1').checked) envScore += 1;
+                if(document.getElementById('bonus2').checked) envScore += 1;
+                if(document.getElementById('bad1').checked) envScore -= 2;
+                
+                let atmosScore = 6;
+                if(bossVal === 0.8) atmosScore -= 2;
+                if(bossVal === 1.2) atmosScore += 2;
+                if(msgVal === 0.9) atmosScore -= 1;
+                if(msgVal === 1.1) atmosScore += 1;
+                atmosScore += envScore;
+                atmosScore = Math.max(1, Math.min(10, atmosScore));
+
+                // --- C. Personal Baseline Score ---
+                const stageModMap = { newbie: 0.85, skilled: 1.0, veteran: 1.1, oldhand: 1.2 };
+                const eduModMap = { pragmatic: 0.9, standard: 1.0, boosted: 1.08, topbuff: 1.15 };
+                const moatModMap = { A: 0.9, B: 1.0, C: 1.15 };
+                const cScoreRaw = (stageModMap[this.data.stage] || 1.0) * (eduModMap[this.data.edu] || 1.0) * (moatModMap[this.data.moat] || 1.0);
+
+                let title, subtitle, desc, titleColor, niumaPercent;
+                
+                // Base scenarios
+                if (finalRate < 20) {
+                    title = "纯种牛马"; subtitle = "Purebred Niuma"; desc = "恭喜你，你的每一个毛孔都流淌着纯正的牛马基因。时薪不如便利店兼职，老板的画饼是你唯一的口粮。建议直接申请加入《动物世界》拍摄。"; titleColor = "text-red-600"; niumaPercent = "99.9%";
+                } else if (finalRate < 40) {
+                    title = "极品耗材"; subtitle = "Premium Consumable"; desc = "你是老板眼中的完美电池，用完即弃的顶级耗材。虽然比纯种牛马稍微强点，但本质上还是在用命换钱。你的性价比低得让人心疼。"; titleColor = "text-orange-500"; niumaPercent = "80%";
+                } else if (finalRate < 80) {
+                    title = "觉醒牛马"; subtitle = "Awakened Niuma"; desc = "你已经看透了职场的本质，开始学会在夹缝中生存。虽然偶尔还得吃草挤奶，但至少懂得了保留体力，不再傻乎乎地全速奔跑。"; titleColor = "text-blue-600"; niumaPercent = "60%";
+                } else if (finalRate < 150) {
+                    title = "摸鱼艺术家"; subtitle = "Slacking Artist"; desc = "你是反内卷的先锋，带薪拉屎的王者。你用高超的摸鱼技巧拉高了时薪，把老板的剩余价值反向薅到了自己手里。佩服！"; titleColor = "text-green-500"; niumaPercent = "30%";
+                } else {
+                    title = "职场神仙"; subtitle = "Workplace Deity"; desc = "你不是牛马，你是骑在牛马背上的人。钱多事少离家近，这种神仙工作建议直接传位给下一代，或者收我为徒吧！"; titleColor = "text-purple-600"; niumaPercent = "0%";
+                }
+
+                // --- 暴击场景判定 (Overrides) ---
+                if (cScoreRaw >= 1.2 && finalRate < 40) {
+                    // 1. 严重倒挂型
+                    title = "落难贵族"; subtitle = "Fallen Aristocrat"; desc = "系统检测到你手握顶级底牌（高学历/深厚护城河），却领着纯种牛马的薪水！这家公司根本装不下你的才华，老板正在疯狂白嫖你的剩余价值。这不是你的问题，是这破岗位配不上你，立刻刷新简历，别在这内耗了！"; titleColor = "text-red-600";
+                } else if (finalRate > 80 && atmosScore <= 4) {
+                    // 2. 黄金手铐型
+                    title = "镶金边的耗材"; subtitle = "Golden Handcuffs"; desc = "虽然你的真实时薪达到了神仙级别，但你的环境得分极低。你现在拿的高薪，本质上是老板提前预支给你的【精神损失费】和【医疗费】。这不是神仙工作，这是一副黄金手铐。建议每月留出一半工资作为心理咨询基金。"; titleColor = "text-purple-600";
+                } else if (cScoreRaw < 1.1 && finalRate >= 80 && atmosScore >= 7) {
+                    // 3. 时代红利型
+                    title = "风口上的天选之子"; subtitle = "The Chosen One"; desc = "坦白局：以你的基本盘，能拿到现在的时薪和工作环境，击败了 95% 的同龄人！你完美踩中了时代的红利或神仙苟区。建议情绪稳定，死死抱住公司大腿，老板不赶你千万别走！"; titleColor = "text-yellow-500";
+                } else if (cScoreRaw <= 0.95 && finalRate < 40 && atmosScore >= 4 && atmosScore <= 7) {
+                    // 4. 菜鸡互啄型
+                    title = "菜鸡互啄的稳定态"; subtitle = "Stable Bottom Feeder"; desc = "你的不可替代性较低，公司给的待遇也很普通。你们属于谁也别嫌弃谁的稳定期。不用太焦虑，先苟住发育，把核心技能练出来再谈掀桌子。"; titleColor = "text-orange-500";
+                }
+
+                const titleEl = document.getElementById('result-title');
+                titleEl.textContent = title;
+                titleEl.className = `text-4xl sm:text-5xl font-black mb-1 tracking-tight ${titleColor}`;
+
+                document.getElementById('result-subtitle').textContent = subtitle;
+                document.getElementById('result-desc').textContent = desc;
+                document.getElementById('niuma-percent').textContent = niumaPercent;
+
+                const stolen = Math.round(this.data.fishHours * this.data.days * baseRate);
+                document.getElementById('fish-gain').textContent = `+${stolen}元`;
+
+                // --- Calculate Radar Data ---
+                // 计算等效月薪
+                const totalAnnualSalary = this.data.salary * (this.data.salaryMonths || 12) + (this.data.bonusMoney || 0);
+                const equivMonthlySalary = totalAnnualSalary / 12;
+
+                // 1. 薪酬购买力 (0-10)
+                let salaryScore = 5;
+                if(equivMonthlySalary < 5000) salaryScore = 2;
+                else if(equivMonthlySalary < 10000) salaryScore = 4;
+                else if(equivMonthlySalary < 20000) salaryScore = 6;
+                else if(equivMonthlySalary < 35000) salaryScore = 8;
+                else salaryScore = 10;
+                if(this.data.city === 'tier1') salaryScore -= 1; // 一线城市扣减购买力
+                if(this.data.city === 'other') salaryScore += 1; // 三线城市加分
+                salaryScore = Math.max(1, Math.min(10, salaryScore));
+
+                // 2. 时间掌控权 (0-10) 反转时长
+                const dailyTotal = this.data.workHours + this.data.commuteHours;
+                let timeScore = 10 - (dailyTotal - 8); // 8小时得10分，每多一小时扣1分
+                timeScore = Math.max(1, Math.min(10, timeScore));
+
+                // 3. 情绪健康度 (0-10)
+                let healthScore = atmosScore;
+
+                // 4. 简历含金量 (0-10)
+                let cvScore = 5;
+                if(cScoreRaw >= 1.2) cvScore = 10;
+                else if(cScoreRaw >= 1.1) cvScore = 8;
+                else if(cScoreRaw >= 1.0) cvScore = 6;
+                else if(cScoreRaw >= 0.9) cvScore = 4;
+                else cvScore = 2;
+
+                // 5. 技能成长率 (0-10)
+                const growthVal = parseFloat(document.querySelector('input[name="growth"]:checked').value);
+                let growthScore = 0;
+                if(growthVal === 0.9) growthScore = 3;
+                else if(growthVal === 1.0) growthScore = 6;
+                else growthScore = 9;
+
+                // Draw Radar Chart
+                try {
+                    if(window.radarChartInstance) {
+                        window.radarChartInstance.destroy();
+                    }
+                    const ctx = document.getElementById('radarChart').getContext('2d');
+                    window.radarChartInstance = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: ['薪酬购买力', '时间掌控权', '情绪健康度', '简历含金量', '技能成长率'],
+                            datasets: [{
+                                label: '你的维度分',
+                                data: [salaryScore, timeScore, healthScore, cvScore, growthScore],
+                                backgroundColor: 'rgba(16, 185, 129, 0.2)', // primary green transparent
+                                borderColor: '#10B981',
+                                pointBackgroundColor: '#10B981',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#10B981',
+                                borderWidth: 2,
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                r: {
+                                    angleLines: { color: 'rgba(0, 0, 0, 0.05)' },
+                                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                                    pointLabels: {
+                                        font: { family: 'Inter', size: 10, weight: 'bold' },
+                                        color: '#6B7280' // gray-500
+                                    },
+                                    ticks: { display: false, min: 0, max: 10, stepSize: 2 }
+                                }
+                            },
+                            plugins: { legend: { display: false } },
+                            maintainAspectRatio: true
+                        }
+                    });
+                } catch (e) {
+                    console.error("Chart rendering failed:", e);
+                }
+
+                // 4. Star Rating
+                // 1-5 stars based on finalRate thresholds
+                let stars = 0;
+                if(finalRate < 20) stars = 1;
+                else if(finalRate < 40) stars = 2;
+                else if(finalRate < 80) stars = 3;
+                else if(finalRate < 150) stars = 4;
+                else stars = 5;
+
+                const starContainer = document.getElementById('star-rating');
+                starContainer.innerHTML = '';
+                for(let i=0; i<5; i++) {
+                    const icon = document.createElement('span');
+                    icon.className = 'material-icons-round text-xl';
+                    icon.textContent = i < stars ? 'star' : 'star_border';
+                    starContainer.appendChild(icon);
+                }
+
+                // Sub-division Analysis
+                let commuteText = "";
+                let cityText = "";
+                const cHours = this.data.commuteHours;
+                const city = this.data.city;
+
+                // Commute Analysis
+                if (city === 'tier1') { // Tier 1
+                    if (cHours > 2) commuteText = "在北上广深，这叫『跨省上班』。你的家只是个睡觉的地方，地铁才是你真正的家。建议把地铁通勤时间算进工时，那样你的时薪会更感人。";
+                    else if (cHours > 1) commuteText = "标准社畜配置。每天在拥挤的地铁上闻着别人的早餐味思考人生，是你的必修课。这1小时是你唯一属于自己的发呆时间。";
+                    else commuteText = "居然住这么近？看来你的房租在给房东打工。虽然省了时间，但可能失去了在地铁上补觉的理由。";
+                } else if (city === 'new-tier1') { // New Tier 1 / Tier 2
+                    if (cHours > 1) commuteText = "在这个城市通勤超过1小时？建议直接住公司，省下的时间能多卷两个项目。你的生命有一部分被红绿灯吞噬了。";
+                    else commuteText = "幸福感爆棚！但小心，通勤时间越短，老板让你加班的心理负担就越小：『反正你住得近，晚点走没事。』";
+                } else if (city === 'other') { // Other
+                    if (cHours > 0.5) commuteText = "小城市还要半小时通勤？你是不是住在村里，公司在城里？建议买辆电动车，享受风驰电掣的自由。";
+                    else commuteText = "这是什么神仙日子？回家吃个午饭再来上班都来得及吧！你的时间是用来生活的，不是用来赶路的。";
+                } else if (city === 'remote') { // Remote
+                    commuteText = "通勤？什么是通勤？哦，你是说从卧室走到客厅的距离吗？唯一的风险是容易腰间盘突出，以及分不清生活和工作的界限。";
+                } else { // Overseas
+                    commuteText = "跨国通勤？你是在飞国际航班还是在家跟地球另一边开会？注意时差，别把日夜颠倒当成了全天候工作制。";
+                }
+
+                // City Analysis
+                if (city === 'tier1') {
+                    cityText = "不仅要卷工作，还要卷生存。你的工资看起来很高，但扣除房租和物价，剩下的钱可能还不如老家卖煎饼果子的大姨。这座城市不相信眼泪，只相信KPI。";
+                } else if (city === 'new-tier1') {
+                    cityText = "卷又卷不动，躺又躺不平。你是这个时代最典型的『夹心层』，既想要大城市的繁华，又想要小城市的安逸，结果往往是两头不讨好。";
+                } else if (city === 'other') {
+                    cityText = "除了工资低点，这里什么都好。但每当夜深人静刷朋友圈看到同学在国贸喝咖啡时，你心里会不会泛起一丝波澜？安逸是最大的麻醉剂。";
+                } else if (city === 'remote') {
+                    cityText = "你已经脱离了地理位置的束缚，但可能陷入了『24小时在线』的诅咒。你的肉体是自由的，但灵魂永远在线。";
+                } else { // Overseas
+                    cityText = "挣着外汇，花着外币，看似光鲜亮丽。但要当心汇率波动和身在异乡的孤独感，有时候发在朋友圈的风景，可能只是为了掩饰加班的黑眼圈。";
+                }
+
+                document.getElementById('commute-analysis').textContent = commuteText;
+                document.getElementById('city-analysis').textContent = cityText;
+
+                // Growth Analysis
+                let growthText = "";
+                if (growthVal < 1.0) {
+                    growthText = "警惕！这份工作正在消耗你的未来。重复性的劳动不仅无法提升技能，还会让你在舒适区里慢慢生锈。建议利用业余时间充电，或者寻找能接触核心业务的机会。";
+                } else if (growthVal === 1.0) {
+                    growthText = "成长中规中矩。虽然没有飞速提升，但也能积累经验。关键在于你是否能主动寻找突破点，把日常工作做出新意，或者在业余时间发展第二曲线。";
+                } else {
+                    growthText = "恭喜！你在一个高成长的赛道上。虽然现在可能累一点，但技能和认知的提升是巨大的财富。这段经历将是你未来跳槽或晋升的强力跳板。";
+                }
+                document.getElementById('growth-analysis').textContent = growthText;
+
+                // Value Analysis
+                let valueText = "";
+                if (cScoreRaw >= 1.15) {
+                    valueText = "你的核心护城河非常深或者学历资历极具竞争力。在职场上，你拥有极高的溢价权。任何公司失去你，都将付出巨大的重置成本。";
+                } else if (cScoreRaw >= 1.0) {
+                    valueText = "你已经建立了一定的职业壁垒。虽然不是完全不可替代，但公司短期内离不开你，这给了你稳步向上谈判的筹码。";
+                } else {
+                    valueText = "危险警告！目前你的可替代性较高，像个随时可以拔插的U盘。当务之急是立刻找到一项核心技能，把自己变成承重墙。";
+                }
+                document.getElementById('value-analysis').textContent = valueText;
+            }
+        };
+    </script>
+</body>
+</html>
