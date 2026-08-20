@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 from talentforge.llm.client import EnvLLMClient
@@ -40,3 +42,52 @@ def test_extract_json_garbage_raises():
     import pytest as _p
     with _p.raises(ValueError):
         extract_json("根本没有json")
+
+
+# --- OpenCode 凭据回退链（R7 用户批准） ---
+
+def test_resolve_opencode_credentials_reads_deepseek_key(tmp_path, monkeypatch):
+    import talentforge.llm.client as client_mod
+
+    auth = tmp_path / "auth.json"
+    auth.write_text(json.dumps({"deepseek": {"type": "api", "key": "sk-test-123"}}), encoding="utf-8")
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", auth)
+    base, key = client_mod.resolve_opencode_credentials()
+    assert base == "https://api.deepseek.com"
+    assert key == "sk-test-123"
+
+
+def test_resolve_opencode_credentials_missing_file(tmp_path, monkeypatch):
+    import talentforge.llm.client as client_mod
+
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "nope.json")
+    assert client_mod.resolve_opencode_credentials() == ("", "")
+
+
+def test_env_client_falls_back_to_opencode(tmp_path, monkeypatch):
+    import talentforge.llm.client as client_mod
+
+    auth = tmp_path / "auth.json"
+    auth.write_text(json.dumps({"deepseek": {"type": "api", "key": "sk-fallback"}}), encoding="utf-8")
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", auth)
+    for var in ("TALENTFORGE_LLM_BASE_URL", "TALENTFORGE_LLM_API_KEY", "TALENTFORGE_LLM_MODEL"):
+        monkeypatch.delenv(var, raising=False)
+    c = client_mod.EnvLLMClient(transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    assert c._base_url == "https://api.deepseek.com"
+    assert c._api_key == "sk-fallback"
+    assert c._model == "deepseek-chat"
+
+
+def test_env_client_explicit_overrides_everything(tmp_path, monkeypatch):
+    import talentforge.llm.client as client_mod
+
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "missing.json")
+    monkeypatch.setenv("TALENTFORGE_LLM_BASE_URL", "https://env.test/v1")
+    monkeypatch.setenv("TALENTFORGE_LLM_API_KEY", "env-key")
+    monkeypatch.setenv("TALENTFORGE_LLM_MODEL", "env-model")
+    c = client_mod.EnvLLMClient(
+        base_url="https://explicit.test/v1", api_key="explicit-key", model="explicit-model"
+    )
+    assert c._base_url == "https://explicit.test/v1"
+    assert c._api_key == "explicit-key"
+    assert c._model == "explicit-model"
