@@ -208,17 +208,14 @@ talentforge/
 > 每里程碑先落 `docs/spec-m{N}-*.md`，确认后实现；原子 commit，conventional message。
 
 - **M0 骨架 + 稳定契约**：§5 schema 类型 + §3.2 Protocol 定义 + 端到端空壳（显式输入 → 空决策 → 空报告）。
-- **M1 画像 + 胜任力**：`profile/` 显式版默认实现（双轨 + 结构位置）+ `competency/` 挂载 TalentModel-skill（结构化 JSON 版）。
+- **M1 画像 + 胜任力**：`profile/` 显式版默认实现（三轨 + 八格结构位置 + α 假设机制 narrative_claims + 词表 + 证据链 + overrides，依 O1 决议 D16–D18）+ `competency/` 挂载 TalentModel-skill（结构化 JSON 版）+ LLM 基础层（httpx 单 provider、结构化输出容错、prompt-cache 约定）。内容采集（8 平台）与岗位源同属采集机械，归 M2。
 - **M2 数据 + 匹配**：`sources/` Boss 单源只读抓取 + `field/` 最小结构性风险信号库 + `matcher/` 三维匹配默认实现。
 - **M3 决策 + 反馈**：`decision/` 三元 + 可解释链 + 结构性追问 + `feedback/` 显示性偏好回流闭环。
 
 ## 11. 悬置问题（触发时机见各条，单独探讨）
 
 ### O1 — 画像层深度：如何移植 OpenBiliClaw 灵魂机制
-- 背景：五层自进化依赖海量内容事件，求职域信号稀疏 1–2 个数量级。
-- 候选：A 完整五层 / B 三层 / C 两层最简。
-- 硬约束（D10/D12）：人的模型必须容纳叙事轨 + 效用轨 + 结构位置 + 场域（后两者超 OpenBiliClaw 五层，无上游）。
-- 触发时机：M1（soul 里程碑）规划前。
+- **已决议（accepted，2026-08-20）**：选项 C 为底 + α 假设机制 + 精神分析式读人 + 内容采集 8 平台 + 八格结构位置 + 词表护栏（含用户确认权）+ 证据话语五要素。全文见 `docs/deliberations/O1-profile-depth.md`，摘要见 `design-decisions.md` D16–D19。
 
 ### O2 — 匹配 × 胜任力量化方法
 - 背景：TalentModel-skill 未经理论审视；需引入理论根基。
