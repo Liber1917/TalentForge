@@ -14,16 +14,16 @@ from talentforge.domain.feedback import FeedbackEvent
 class ProfileEngine(Protocol):
     """画像引擎（可拓展外围，O1 待定深度）。"""
 
-    def build_profile(self, explicit: dict[str, Any]) -> Profile: ...
+    async def build_profile(self, explicit: dict[str, Any]) -> Profile: ...
 
-    def update_from_feedback(self, profile: Profile, event: FeedbackEvent) -> Profile: ...
+    async def update_from_feedback(self, profile: Profile, event: FeedbackEvent) -> Profile: ...
 
 
 @runtime_checkable
 class CompetencyModelBuilder(Protocol):
     """胜任力建模（可拓展外围，O2 待理论审视）。"""
 
-    def build(self, role: str, level: str, jd_texts: list[str]) -> CompetencyModel: ...
+    async def build(self, role: str, level: str, jd_texts: list[str]) -> CompetencyModel: ...
 
 
 @runtime_checkable
@@ -37,7 +37,7 @@ class FieldModeler(Protocol):
 class Matcher(Protocol):
     """三维匹配（可拓展外围，O2 量化方法待定）。"""
 
-    def match(
+    async def match(
         self, profile: Profile, job: Job, competency: CompetencyModel, field: FieldModel
     ) -> Match: ...
 
