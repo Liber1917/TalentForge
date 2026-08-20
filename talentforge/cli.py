@@ -14,6 +14,7 @@ from talentforge.domain.match import Match, FitLevel, StructuralAssessment
 from talentforge.domain.profile import Profile
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.profile.engine import DefaultProfileEngine
+from talentforge.profile.resume_io import extract_resume_text
 
 
 def _build_llm() -> LLMClient:
@@ -50,11 +51,11 @@ async def _run_profile_build(explicit: dict[str, Any]) -> Profile:
 
 @main.command("profile-build")
 @click.option("--name", type=str, default="", help="候选人姓名")
-@click.option("--resume-file", type=click.Path(exists=True, dir_okay=False), required=True, help="简历文本文件")
+@click.option("--resume-file", type=click.Path(exists=True, dir_okay=False), required=True, help="简历文件（.txt/.md/.pdf/.docx）")
 @click.option("--explicit-json", type=click.Path(exists=True, dir_okay=False), default=None, help="显式画像 JSON（八格/效用等）")
 def profile_build(name: str, resume_file: str, explicit_json: str | None) -> None:
     """简历 bootstrap 生成画像，输出 Profile JSON 摘要到 stdout。"""
-    resume_text = Path(resume_file).read_text(encoding="utf-8")
+    resume_text = extract_resume_text(resume_file)
     if explicit_json:
         explicit = json.loads(Path(explicit_json).read_text(encoding="utf-8"))
     else:
