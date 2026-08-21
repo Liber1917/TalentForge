@@ -27,9 +27,9 @@ class ClaimSource(BaseModel):
     ref: str = ""
 
 class NarrativeClaim(BaseModel):
-    """α 假设机制（O1/D16）：叙事主张，trial→（M3 用户确认）→active；M1 只有 trial/archived。"""
+    """α 假设机制（O1/D16）：叙事主张，trial→（M3 用户确认）→active；archived 为归档。"""
     text: str
-    state: Literal["trial", "archived"] = "trial"
+    state: Literal["trial", "active", "archived"] = "trial"
     evidence_count: int = 0
     confidence: float = 0.5
     sources: list[ClaimSource] = Field(default_factory=list)
