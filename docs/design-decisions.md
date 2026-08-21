@@ -54,3 +54,4 @@
 - O4 — 岗位源范围（Boss 直聘 + 牛客 + 校招官网？）与只读抓取验收口径
 | D20 | O2 简历包装决议（accepted） | ①包装=中性（不判死刑/不扣分，风格入叙事轨中性记录）；②所有主张统一走α机制：trial/unverified→多源证据累积（行为/反馈/对话/上传证明）→verified；③转正后有时效（借鉴OpenBiliClaw时效三态：有效/待复审/过期）——能力随时间变化；④匹配只吃"证据够"的主张（verified_skills 分离，未验证只作参考）；⑤潜力=变化率（追踪轨迹非快照）；⑥契约红线：不碰 feedback/FeedbackEvent，verified 不进 Literal，全 additive；⑦时间窗硬边界（一校招周期未验证即 archived）。详见 docs/deliberations/O2-resume-packaging.md |
 | D21 | 校对等交互全走 Web | 简历抽取校对、主张验证确认、画像编辑等一切用户交互面统一走 Web（M3 前端范围）；CLI 保持纯命令工具定位，不做交互式确认 |
+| D22 | M2 方案定稿 | ①M2a（Boss岗位链路：Playwright抓取→Job归一化→场域最小版→匹配粗版→三元决策报告）先行，M2b（插件内容采集）后铺；②首批平台B站+知乎，OpenBiliClaw式被动采集（用户浏览自动记录，照搬核心管道~2100行机制）；③匹配先粗后细——M2a用FitLevel高低两档（够决策象限），序数偏好精排后置 |
