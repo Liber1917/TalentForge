@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "TalentForge",
+  "version": "0.1.0",
+  "background": {
+    "service_worker": "dist/background/service-worker.js",
+    "type": "module"
+  },
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "*://*.bilibili.com/*",
+    "*://*.zhihu.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.bilibili.com/*"],
+      "js": ["dist/content/bilibili.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.zhihu.com/*"],
+      "js": ["dist/content/zhihu.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
