@@ -6,13 +6,19 @@ from talentforge.domain.job import Job
 from talentforge.domain.profile import SalaryRange
 from talentforge.sources.boss import parse_salary
 
-# 结构性风险关键词（精确子串匹配；"加班费"出现说明有加班费讨论，中性但值得标记）
-RISK_KEYWORDS: list[str] = ["996", "大小周", "单休", "无偿加班", "竞业限制", "加班费"]
+# 结构性风险扫描关键词（精确子串匹配）——与 talentforge/field/risks.py 的键对齐
+RISK_KEYWORDS: list[str] = [
+    "996", "大小周", "单休", "无偿加班", "竞业限制", "加班费", "无社保", "弹性工作制",
+]
+
+# 扫描命中 → 场域风险库 canonical key 的归一映射（"加班费"是"加班费模糊"的子串）
+RISK_KEY_ALIASES: dict[str, str] = {"加班费": "加班费模糊"}
 
 
 def scan_risks(text: str) -> list[str]:
-    """扫描文本中的结构性风险关键词，返回命中列表（按清单顺序去重）。"""
-    return [keyword for keyword in RISK_KEYWORDS if keyword in text]
+    """扫描文本中的结构性风险关键词，返回 field/risks.py 的 canonical key 列表（去重保序）。"""
+    hits = [keyword for keyword in RISK_KEYWORDS if keyword in text]
+    return [RISK_KEY_ALIASES.get(keyword, keyword) for keyword in hits]
 
 
 def normalize_to_job(card: dict[str, object], city: str) -> Job:

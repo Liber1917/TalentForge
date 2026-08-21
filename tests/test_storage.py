@@ -144,3 +144,13 @@ def test_normalize_to_job_without_salary_or_risks() -> None:
     assert job.salary is None
     assert job.risk_keys == []
     assert job.description == "日常运维与值班"
+
+
+def test_scan_risks_aliases_overtime_to_canonical_key() -> None:
+    # "加班费" 命中 → 归一为场域风险库 canonical key "加班费模糊"
+    assert scan_risks("公司提供加班费补贴") == ["加班费模糊"]
+    assert "无社保" in scan_risks("入职即缴纳五险一金，无社保")
+
+
+def test_scan_risks_elastic_work_policy_marked() -> None:
+    assert scan_risks("弹性工作制，结果导向") == ["弹性工作制"]
