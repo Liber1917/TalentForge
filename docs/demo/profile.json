@@ -1,12 +1,121 @@
 {
   "name": "示例候选人（Demo）",
-  "years_experience": 3,
-  "skills": ["Python", "后端开发", "分布式系统"],
-  "desired_roles": ["后端工程师"],
-  "preferred_locations": ["深圳"],
-  "deal_breakers": ["996"],
+  "email": null,
+  "years_experience": 3.0,
+  "skills": [
+    "Python",
+    "后端开发",
+    "分布式系统"
+  ],
+  "desired_roles": [
+    "后端工程师"
+  ],
+  "preferred_locations": [
+    "深圳"
+  ],
+  "salary_expectation": null,
+  "deal_breakers": [
+    "996"
+  ],
   "narrative": {
     "identity": "深耕后端基础设施的工程师",
-    "deep_drives": ["系统设计深度"]
-  }
+    "values": [],
+    "deep_drives": [
+      "系统设计深度"
+    ],
+    "cognitive_style": null
+  },
+  "utility_preferences": {},
+  "structural_position": {
+    "material_conditions": "",
+    "social_relations": "",
+    "extra": {},
+    "cash_buffer": null,
+    "stage": "",
+    "city_constraints": [],
+    "family_duty": "",
+    "support_network": [],
+    "economic_independence": "",
+    "family_payback": false,
+    "reservation_wage": null,
+    "market_assessment": {},
+    "exploitation_redlines": [],
+    "reproduction_costs": null,
+    "mobility": null
+  },
+  "revealed_preferences": [],
+  "narrative_claims": [
+    {
+      "text": "用户对后端开发中的异步编程技术有深入学习的兴趣",
+      "state": "trial",
+      "evidence_count": 0,
+      "confidence": 0.9,
+      "sources": [
+        {
+          "kind": "behavior",
+          "ref": "demo-5"
+        }
+      ]
+    },
+    {
+      "text": "用户正在准备系统设计面试，关注相关面试准备内容",
+      "state": "trial",
+      "evidence_count": 0,
+      "confidence": 0.95,
+      "sources": [
+        {
+          "kind": "behavior",
+          "ref": "demo-5"
+        }
+      ]
+    },
+    {
+      "text": "用户对分布式系统设计中的一致性协议（如Raft、Paxos）有研究需求",
+      "state": "trial",
+      "evidence_count": 0,
+      "confidence": 0.85,
+      "sources": [
+        {
+          "kind": "behavior",
+          "ref": "demo-5"
+        }
+      ]
+    },
+    {
+      "text": "用户偏好通过视频和问答平台获取技术知识",
+      "state": "trial",
+      "evidence_count": 0,
+      "confidence": 0.8,
+      "sources": [
+        {
+          "kind": "behavior",
+          "ref": "demo-5"
+        }
+      ]
+    },
+    {
+      "text": "用户可能处于求职或职业进阶阶段，目标岗位涉及系统架构或后端开发",
+      "state": "trial",
+      "evidence_count": 0,
+      "confidence": 0.75,
+      "sources": [
+        {
+          "kind": "behavior",
+          "ref": "demo-5"
+        }
+      ]
+    },
+    {
+      "text": "用户对系统设计面试的准备是系统性的，包括搜索和浏览相关资源",
+      "state": "trial",
+      "evidence_count": 0,
+      "confidence": 0.7,
+      "sources": [
+        {
+          "kind": "behavior",
+          "ref": "demo-5"
+        }
+      ]
+    }
+  ]
 }
