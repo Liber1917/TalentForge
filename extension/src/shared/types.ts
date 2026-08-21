@@ -1,4 +1,35 @@
-// Shared domain types: BehaviorEvent contract and PlatformAdapter interface (Task 4/5 fill details).
+// Shared domain types: BehaviorEvent contract and PlatformAdapter interface.
+
+export const EVENT_TYPES = {
+  click: "click",
+  scroll: "scroll",
+  search: "search",
+  view: "view",
+  comment: "comment",
+  like: "like",
+  favorite: "favorite",
+} as const;
+
+export type EventType = (typeof EVENT_TYPES)[keyof typeof EVENT_TYPES];
+
+/** Strong-signal actions: worth an immediate flush and heavier downstream weight. */
+export const STRONG_SIGNAL_TYPES: ReadonlySet<string> = new Set<string>([
+  EVENT_TYPES.comment,
+  EVENT_TYPES.like,
+  EVENT_TYPES.favorite,
+]);
+
+export function isStrongSignal(type: string): boolean {
+  return STRONG_SIGNAL_TYPES.has(type);
+}
+
+/** Self-generated identity for events; unique per producer + stable across storage moves. */
+export function newEventId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export interface BehaviorEvent {
   event_id: string;
   type: string;
@@ -21,5 +52,5 @@ export interface PlatformAdapter {
   extractContentId(url: string): string | null;
   cardSelector?: string;
   inferActionType(target: Element | null): string | null;
-  buildEventMetadata(...args: unknown[]): Record<string, unknown>;
+  buildEventMetadata(url: string): Record<string, unknown>;
 }
