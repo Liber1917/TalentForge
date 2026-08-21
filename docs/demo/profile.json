@@ -1,0 +1,12 @@
+{
+  "name": "示例候选人（Demo）",
+  "years_experience": 3,
+  "skills": ["Python", "后端开发", "分布式系统"],
+  "desired_roles": ["后端工程师"],
+  "preferred_locations": ["深圳"],
+  "deal_breakers": ["996"],
+  "narrative": {
+    "identity": "深耕后端基础设施的工程师",
+    "deep_drives": ["系统设计深度"]
+  }
+}
