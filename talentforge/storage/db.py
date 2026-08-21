@@ -124,6 +124,38 @@ def insert_event(
     return cursor.rowcount > 0
 
 
+def _load_json(value: str | None) -> dict:
+    """反序列化 JSON 字段：空串/损坏返回空 dict。"""
+    if not value:
+        return {}
+    try:
+        data = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def list_events(conn: sqlite3.Connection, limit: int = 100) -> list[dict]:
+    """按接收时间倒序读回最近事件（limit 条），context/metadata 反序列化为 dict。"""
+    rows = conn.execute(
+        "SELECT * FROM events ORDER BY received_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [
+        {
+            "event_id": row["event_id"],
+            "event_type": row["event_type"],
+            "url": row["url"],
+            "title": row["title"],
+            "source_platform": row["source_platform"],
+            "context": _load_json(row["context_json"]),
+            "metadata": _load_json(row["metadata_json"]),
+            "received_at": row["received_at"],
+        }
+        for row in rows
+    ]
+
+
 def list_jobs(conn: sqlite3.Connection, limit: int = 100, offset: int = 0) -> list[Job]:
     """按抓取时间倒序读回岗位列表（limit/offset 分页），JSON 字段反序列化为 Job。"""
     rows = conn.execute(

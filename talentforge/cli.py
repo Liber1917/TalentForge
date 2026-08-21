@@ -7,6 +7,7 @@ from typing import Any
 
 import click
 
+from talentforge.api.events import handle_events
 from talentforge.competency.builder import DefaultCompetencyModelBuilder
 from talentforge.decision.verdict import decide
 from talentforge.domain.competency import CompetencyModel
@@ -15,11 +16,12 @@ from talentforge.domain.profile import Profile
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.matcher.coarse import CoarseMatcher
 from talentforge.profile.engine import DefaultProfileEngine
+from talentforge.profile.pipeline import ProfileUpdatePipeline
 from talentforge.profile.resume_io import extract_resume_text
 from talentforge.report.generate import generate_report
 from talentforge.sources.boss import parse_boss_cards
 from talentforge.sources.normalize import normalize_to_job
-from talentforge.storage.db import init_db
+from talentforge.storage.db import init_db, list_events
 
 
 def _build_llm() -> LLMClient:
@@ -130,6 +132,84 @@ def report_command(
         generate_report(profile, query, city, limit=limit, matcher=matcher, conn=conn, jobs=jobs)
     )
     click.echo(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+async def _run_profile_update(pipeline: ProfileUpdatePipeline, profile: Profile, events: list[dict]) -> Profile:
+    """消费事件批并返回更新后的 Profile。"""
+    return await pipeline.ingest_events(profile, events)
+
+
+@main.command("events-ingest")
+@click.argument("jsonl_path", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--db",
+    type=click.Path(dir_okay=False),
+    default=None,
+    help="SQLite 路径（默认 data/talentforge.db）",
+)
+def events_ingest(jsonl_path: str, db: str | None) -> None:
+    """逐行读取事件 JSONL，校验并入库（event_id 幂等去重，不消费）。"""
+    conn = init_db(db) if db else init_db()
+    events: list[dict] = []
+    invalid = 0
+    for line in Path(jsonl_path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            invalid += 1
+            continue
+        if isinstance(data, dict):
+            events.append(data)
+        else:
+            invalid += 1
+    result = handle_events({"events": events}, conn)
+    stats = {
+        "ingested": result["accepted"],
+        "duplicates": result["duplicates"],
+        "invalid": invalid + len(result["rejected"]),
+    }
+    click.echo(json.dumps(stats, ensure_ascii=False))
+
+
+@main.command("profile-update")
+@click.option(
+    "--profile",
+    "profile_file",
+    type=click.Path(dir_okay=False),
+    required=True,
+    help="Profile JSON 文件（写回更新）",
+)
+@click.option("--limit", type=int, default=50, show_default=True, help="最多消费最近事件数")
+@click.option(
+    "--db",
+    type=click.Path(dir_okay=False),
+    default=None,
+    help="SQLite 路径（默认 data/talentforge.db）",
+)
+def profile_update(profile_file: str, limit: int, db: str | None) -> None:
+    """从事件表消费最近事件，更新画像（trial claims 累积）并写回文件。"""
+    profile = Profile.model_validate(json.loads(Path(profile_file).read_text(encoding="utf-8")))
+    conn = init_db(db) if db else init_db()
+    events = list_events(conn, limit=limit)
+    before = {claim.text: claim.evidence_count for claim in profile.narrative_claims}
+    pipeline = ProfileUpdatePipeline(llm=_build_llm())
+    updated = asyncio.run(_run_profile_update(pipeline, profile, events))
+    Path(profile_file).write_text(
+        json.dumps(updated.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    added = sum(1 for claim in updated.narrative_claims if claim.text not in before)
+    updated_count = sum(
+        1
+        for claim in updated.narrative_claims
+        if claim.text in before and claim.evidence_count > before[claim.text]
+    )
+    click.echo(
+        json.dumps({"added_claims": added, "updated_claims": updated_count}, ensure_ascii=False)
+    )
 
 
 if __name__ == "__main__":
