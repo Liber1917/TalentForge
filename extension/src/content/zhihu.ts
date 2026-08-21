@@ -1,8 +1,10 @@
-// Zhihu content-script entry (document_idle, isolated world). Wires the zhihu adapter into the kernel (Task 5 fills implementation).
-import type { PlatformAdapter } from "../shared/types";
+// Zhihu content-script entry (document_idle, isolated world). Wires the zhihu
+// adapter into the collector kernel.
+import { ZHIHU_ADAPTER } from "../shared/platforms/zhihu";
+import { startCollector } from "./kernel";
 
-export function bootZhihu(_adapter: PlatformAdapter): void {
-  void _adapter;
-}
+const collector = startCollector(ZHIHU_ADAPTER);
+
+void collector;
 
 (globalThis as Record<string, unknown>).__talentforge_zhihu = true;
