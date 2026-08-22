@@ -88,5 +88,19 @@ def create_app(
     app.include_router(feedback_router)
     app.include_router(sources_router)
 
-    app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")
+    # 本地工具：静态资源禁缓存（JS/CSS 迭代频繁，旧缓存是"改了不生效"的头号来源）
+    app.mount(
+        "/",
+        NoCacheStaticFiles(directory=str(web_dir), html=True),
+        name="web",
+    )
     return app
+
+
+class NoCacheStaticFiles(StaticFiles):
+    """StaticFiles + Cache-Control: no-store（仅本地开发服务用）。"""
+
+    def file_response(self, *args: object, **kwargs: object) -> object:  # type: ignore[override]
+        resp = super().file_response(*args, **kwargs)  # type: ignore[no-untyped-call]
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
