@@ -5,7 +5,8 @@
 配置链（优先级从高到低）：
   1. 构造参数 base_url/api_key/model
   2. 环境变量 TALENTFORGE_LLM_BASE_URL / TALENTFORGE_LLM_API_KEY / TALENTFORGE_LLM_MODEL
-  3. 回退：OpenCode 本地凭据（~/.local/share/opencode/auth.json 的 deepseek.key，
+  3. 回退：OpenCode 本地凭据（~/.local/share/opencode/auth.json，先 zhipuai-coding-plan
+     的 GLM（glm-5.3 @ coding/paas/v4，deepseek 欠费后切换），后 deepseek.key；
      仅当未显式配置时读取；key 不落本项目任何文件）
 """
 from __future__ import annotations
@@ -20,22 +21,35 @@ import httpx
 _OPENCODE_AUTH = Path.home() / ".local" / "share" / "opencode" / "auth.json"
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 _DEEPSEEK_MODEL = "deepseek-chat"
+_ZHIPU_CODING_BASE_URL = "https://open.bigmodel.cn/api/coding/paas/v4"
+_ZHIPU_CODING_MODEL = "glm-5.3"
 
 
-def resolve_opencode_credentials() -> tuple[str, str]:
-    """从 OpenCode 本地凭据解析 deepseek 的 (base_url, api_key)。
-
-    仅读取，不做任何写入；文件缺失/结构不符返回空对。
-    """
+def _read_opencode_auth() -> dict:
+    """读 OpenCode 凭据文件（只读；缺失/损坏返回空 dict）。"""
     try:
         data = json.loads(_OPENCODE_AUTH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return "", ""
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def resolve_opencode_credentials() -> tuple[str, str, str]:
+    """从 OpenCode 本地凭据解析 (base_url, api_key, model)。
+
+    优先级：zhipuai-coding-plan（GLM-5.3，coding 专用端点）> deepseek.key；
+    仅读取不做写入；无可用凭据返回空三元组。
+    """
+    data = _read_opencode_auth()
+    zp = data.get("zhipuai-coding-plan") or {}
+    if isinstance(zp, dict) and str(zp.get("key", "")):
+        return (_ZHIPU_CODING_BASE_URL, str(zp["key"]), _ZHIPU_CODING_MODEL)
     ds = data.get("deepseek") or {}
-    if not isinstance(ds, dict):
-        return "", ""
-    key = str(ds.get("key", ""))
-    return (_DEEPSEEK_BASE_URL, key) if key else ("", "")
+    if isinstance(ds, dict):
+        key = str(ds.get("key", ""))
+        if key:
+            return (_DEEPSEEK_BASE_URL, key, _DEEPSEEK_MODEL)
+    return "", "", ""
 
 
 class LLMClient(Protocol):
@@ -54,10 +68,10 @@ class EnvLLMClient:
         env_base = os.environ.get("TALENTFORGE_LLM_BASE_URL", "")
         env_key = os.environ.get("TALENTFORGE_LLM_API_KEY", "")
         env_model = os.environ.get("TALENTFORGE_LLM_MODEL", "")
-        fallback_base, fallback_key = resolve_opencode_credentials()
+        fallback_base, fallback_key, fallback_model = resolve_opencode_credentials()
         self._base_url = (base_url or env_base or fallback_base).rstrip("/")
         self._api_key = api_key or env_key or fallback_key
-        self._model = model or env_model or _DEEPSEEK_MODEL
+        self._model = model or env_model or fallback_model
         self._transport = transport
         self._timeout = timeout
 

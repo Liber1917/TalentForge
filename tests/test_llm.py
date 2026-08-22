@@ -43,8 +43,28 @@ def test_extract_json_garbage_raises():
     with _p.raises(ValueError):
         extract_json("根本没有json")
 
+# --- OpenCode 凭据回退链（R7 用户批准；M4 后 GLM 优先） ---
 
-# --- OpenCode 凭据回退链（R7 用户批准） ---
+
+def test_resolve_opencode_credentials_prefers_zhipu_coding(tmp_path, monkeypatch):
+    import talentforge.llm.client as client_mod
+
+    auth = tmp_path / "auth.json"
+    auth.write_text(
+        json.dumps(
+            {
+                "zhipuai-coding-plan": {"type": "api", "key": "zp-key-123"},
+                "deepseek": {"type": "api", "key": "sk-test-123"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", auth)
+    base, key, model = client_mod.resolve_opencode_credentials()
+    assert base == "https://open.bigmodel.cn/api/coding/paas/v4"
+    assert key == "zp-key-123"
+    assert model == "glm-5.3"
+
 
 def test_resolve_opencode_credentials_reads_deepseek_key(tmp_path, monkeypatch):
     import talentforge.llm.client as client_mod
@@ -52,16 +72,17 @@ def test_resolve_opencode_credentials_reads_deepseek_key(tmp_path, monkeypatch):
     auth = tmp_path / "auth.json"
     auth.write_text(json.dumps({"deepseek": {"type": "api", "key": "sk-test-123"}}), encoding="utf-8")
     monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", auth)
-    base, key = client_mod.resolve_opencode_credentials()
+    base, key, model = client_mod.resolve_opencode_credentials()
     assert base == "https://api.deepseek.com"
     assert key == "sk-test-123"
+    assert model == "deepseek-chat"
 
 
 def test_resolve_opencode_credentials_missing_file(tmp_path, monkeypatch):
     import talentforge.llm.client as client_mod
 
     monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "nope.json")
-    assert client_mod.resolve_opencode_credentials() == ("", "")
+    assert client_mod.resolve_opencode_credentials() == ("", "", "")
 
 
 def test_env_client_falls_back_to_opencode(tmp_path, monkeypatch):
