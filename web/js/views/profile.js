@@ -9,8 +9,9 @@
      计数，真模式调端点；active/archived 进折叠区
    - 叙事轨：identity（衬线大字引言）+ values（标签 pill 组）
      + deep_drives（列表）
-   - 效用轨：utility_preferences 逐条渲染（attribute + ordering
-     排序，如 薪资：40万以上 > 30-40万 > 20-30万）
+    - 效用轨：utility_preferences 逐条渲染（attribute + ordering
+      排序，如 薪资：40万以上 > 30-40万 > 20-30万；evidence 非空时
+      追加小字"（含 N 次决策回流）"，M4 反馈闭环）
    - 结构位置：D17 八格卡片网格（2 列，>1024px 3 列）+ 剥削敏感带
      /再生产账单/流动性区块；market_assessment 存在即标注"待数据积累"
      （D17 市场侧灰置，用户只填自己那半）
@@ -363,7 +364,7 @@ const TalentForgeProfile = (() => {
         </div>`;
   }
 
-  /** 效用轨 tab：每条偏好 = 属性名 + ordering 排序展示。 */
+  /** 效用轨 tab：每条偏好 = 属性名 + ordering 排序展示；evidence 非空追加回流计数小字（M4）。 */
   function renderUtilityTab(prefs) {
     const entries = Object.entries(prefs || {});
     if (!entries.length) {
@@ -376,13 +377,17 @@ const TalentForgeProfile = (() => {
             const attrKey = prefObj.attribute || attr;
             const label = ATTR_LABEL[attrKey] || attrKey || attr;
             const ordering = Array.isArray(prefObj.ordering) ? prefObj.ordering : [];
+            const evidence = Array.isArray(prefObj.evidence) ? prefObj.evidence : [];
             const orderHtml = ordering
               .map((o, i) => (i ? `<span class="pref-row__arrow">›</span>${esc(o)}` : esc(o)))
               .join("");
+            const evidenceHtml = evidence.length
+              ? `<span class="pref-row__evidence">（含 ${evidence.length} 次决策回流）</span>`
+              : "";
             return `
           <li class="card pref-row">
             <span class="overline">${esc(label)}</span>
-            <p class="pref-row__order">${orderHtml || `<span class="eight-cell__empty">未填写</span>`}</p>
+            <p class="pref-row__order">${orderHtml || `<span class="eight-cell__empty">未填写</span>`}${evidenceHtml}</p>
           </li>`;
           }).join("")}
         </ul>`;

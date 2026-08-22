@@ -1073,3 +1073,36 @@
   .source-card__actions .btn { flex: 1; }
   .source-card__head > :last-child { margin-inline-start: 0; }
 }
+
+/* ===================== 反馈按钮（M4 工作台详情 + 画像 evidence 小字） ===================== */
+
+/* 详情面板底部"我的行动"行：overline 标签 + 轻量 ghost 按钮
+   （primary 色留给系统建议按钮"聊聊这个岗位"，用户行为用轻量样式） */
+.feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-4);
+}
+.feedback-row__label { color: var(--text-tertiary); }
+.feedback-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* "记录结果"原地展开的四小按钮组：默认 hidden，toggle 切换
+   （[hidden] 需显式覆盖 display，否则被 flex 规则顶掉） */
+.feedback-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.feedback-outcomes[hidden] { display: none; }
+/* 已记录态徽章复用 .status-pill--active，"改"复用 .btn--ghost .btn--sm */
+
+/* 画像效用轨 evidence 小字：决策回流计数（caption 灰） */
+.pref-row__evidence {
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+}

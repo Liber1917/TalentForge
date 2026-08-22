@@ -14,10 +14,14 @@
      真模式 POST /api/report/run → 轮询 /api/report/status 直到 done → 刷新列表
    - 空态："没有符合筛选的岗位"（有数据但筛选无匹配）/ 引导卡（完全无数据）
    - 数量统计："共 N 个岗位 · 投 M · 观望 K"
-   - 跨页联动：监听 window "job:focus" 事件（对话页决策卡点击产生），
-     进入工作台时定位对应岗位；"聊聊这个岗位"反向派发 job:focus + 跳 /chat
-   渲染函数为纯字符串输出（文本一律 esc 转义），DOM 层通过 <template> 解析
-   后挂载，便于 node:test 直接断言。
+    - 跨页联动：监听 window "job:focus" 事件（对话页决策卡点击产生），
+      进入工作台时定位对应岗位；"聊聊这个岗位"反向派发 job:focus + 跳 /chat
+    - M4 反馈闭环：详情底部"我的行动"行 = 我已投递 / 我跳过了 / 记录结果
+      （原地展开 面试中/已拒/offer/无回音）三轻量按钮；已记录态显示徽章
+      "已记录：投递 08-22" + "改"回到未记录态。fixtures 模式本地 mock，
+      真模式 POST /api/feedback/events（fetch no-store，参照 sources.js）
+    渲染函数为纯字符串输出（文本一律 esc 转义），DOM 层通过 <template> 解析
+    后挂载，便于 node:test 直接断言。
    ========================================================= */
 
 "use strict";
@@ -25,6 +29,14 @@
 const TalentForgeJobs = (() => {
   /* ---------- 标签映射（DESIGN.md §2 三值语义 / §5 状态） ---------- */
   const VERDICT_LABEL = { apply: "投", hold: "观望", skip: "不投" };
+  /* 反馈动作中文（用户真实行为，与系统判定 VERDICT_LABEL 区分，spec §3） */
+  const FEEDBACK_VERDICT_LABEL = { apply: "投递", hold: "观望", skip: "跳过" };
+  const OUTCOME_LABEL = {
+    interview: "面试中",
+    rejected: "已拒",
+    offer: "offer",
+    no_response: "无回音",
+  };
   const KIND_LABEL = {
     jd: "JD 原文",
     resume: "简历",
@@ -187,6 +199,7 @@ const TalentForgeJobs = (() => {
     selectedUrl: "",
     pendingFocus: null,
     reporting: false,
+    feedback: {}, /* {[job.url]: {verdict, outcome, at}} */
   };
 
   /* ---------- 工具 ---------- */
@@ -207,6 +220,15 @@ const TalentForgeJobs = (() => {
     if (Number.isNaN(d.getTime())) return String(iso);
     const pad = (x) => String(x).padStart(2, "0");
     return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** 反馈徽章日期 MM-DD（Date 或 ISO 兼容，本地时区）。 */
+  function fmtDay(value) {
+    if (!value) return "";
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (x) => String(x).padStart(2, "0");
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   function htmlToElement(html) {
@@ -368,7 +390,42 @@ const TalentForgeJobs = (() => {
         </section>`;
   }
 
-  function renderJobDetail(job) {
+  /** 反馈行（M4 spec §3）：未记录态 = 三轻量按钮 + 默认隐藏 outcome 组；已记录态 = 徽章 + 改。 */
+  function renderFeedbackRow(job, feedback) {
+    const title = (job && job.title) || "";
+    if (feedback && feedback.verdict) {
+      const label = FEEDBACK_VERDICT_LABEL[feedback.verdict] || feedback.verdict;
+      return `
+          <div class="feedback-row feedback-row--done">
+            <span class="overline feedback-row__label">我的行动</span>
+            <span class="status-pill status-pill--active">已记录：${esc(label)} ${esc(fmtDay(feedback.at))}</span>
+            <button class="btn btn--ghost btn--sm" type="button" data-action="feedback-edit"
+                    aria-label="修改反馈记录：${esc(title)}">改</button>
+          </div>`;
+    }
+    const outcomeBtns = Object.entries(OUTCOME_LABEL).map(([key, label]) => `
+            <button class="btn btn--ghost btn--sm" type="button"
+                    data-action="feedback-outcome" data-outcome="${esc(key)}"
+                    aria-label="记录结果：${esc(label)}（${esc(title)}）">${esc(label)}</button>`).join("");
+    return `
+        <div class="feedback-row">
+          <span class="overline feedback-row__label">我的行动</span>
+          <div class="feedback-row__actions">
+            <button class="btn btn--ghost btn--sm" type="button"
+                    data-action="feedback-decided" data-verdict="apply"
+                    aria-label="记录我的行动：已投递（${esc(title)}）">我已投递</button>
+            <button class="btn btn--ghost btn--sm" type="button"
+                    data-action="feedback-decided" data-verdict="skip"
+                    aria-label="记录我的行动：跳过（${esc(title)}）">我跳过了</button>
+            <button class="btn btn--ghost btn--sm" type="button"
+                    data-action="feedback-outcome-toggle" aria-expanded="false"
+                    aria-controls="feedback-outcomes">记录结果</button>
+          </div>
+          <div class="feedback-outcomes" id="feedback-outcomes" hidden>${outcomeBtns}</div>
+        </div>`;
+  }
+
+  function renderJobDetail(job, feedback = null) {
     const verdict = VERDICT_LABEL[job.verdict] || job.verdict;
     const meta = [job.company, job.location, job.salary].filter(Boolean).join(" · ");
     const risks = Array.isArray(job.risk_hits) ? job.risk_hits : [];
@@ -400,6 +457,8 @@ const TalentForgeJobs = (() => {
           <button class="btn btn--primary job-detail__chat" type="button"
                   data-action="chat-about-job"
                   aria-label="和顾问聊聊这个岗位：${esc(job.title)}">聊聊这个岗位</button>
+
+          ${renderFeedbackRow(job, feedback)}
         </article>`;
   }
 
@@ -507,7 +566,7 @@ const TalentForgeJobs = (() => {
     if (!detail) return;
     const job = currentJob();
     detail.innerHTML = job
-      ? renderJobDetail(job)
+      ? renderJobDetail(job, state.feedback[job.url] || null)
       : `<p class="job-detail__empty">在左侧选择一个岗位，这里会显示决策理由、风险与证据链。</p>`;
   }
 
@@ -591,6 +650,44 @@ const TalentForgeJobs = (() => {
     }
   }
 
+  /** 真模式 POST /api/feedback/events（fetch no-store，参照 sources.js requestJson）。 */
+  async function postFeedbackEvent(body) {
+    const res = await fetch("/api/feedback/events", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  /** 记录反馈（spec §3）：fixtures 本地 mock；真模式 POST 后更新徽章。 */
+  async function recordFeedback(job, verdict, outcome = null) {
+    if (!job || !job.url) return;
+    const applyLocally = () => {
+      state.feedback[job.url] = { verdict, outcome, at: new Date() };
+      renderDetail();
+    };
+    if (typeof TalentForgeApi === "undefined" || TalentForgeApi.USE_FIXTURES) {
+      applyLocally();
+      return;
+    }
+    try {
+      await postFeedbackEvent({
+        job_id: job.url,
+        job_title: job.title || "",
+        decision_verdict: verdict,
+        action: outcome ? "outcome" : "decided",
+        outcome: outcome || null,
+      });
+      applyLocally();
+    } catch (err) {
+      console.warn("feedback 记录失败：", err);
+      showStatus("记录失败：后端未启动或稍后重试", "error");
+    }
+  }
+
   async function runReport() {
     if (state.reporting) return;
     const btn = document.getElementById("jobs-report");
@@ -661,6 +758,44 @@ const TalentForgeJobs = (() => {
       if (job) chatAboutJob(job);
       return;
     }
+    const decidedBtn = evt.target.closest("[data-action='feedback-decided']");
+    if (decidedBtn) {
+      evt.preventDefault();
+      const job = currentJob();
+      if (job) recordFeedback(job, decidedBtn.dataset.verdict);
+      return;
+    }
+    const outcomeToggle = evt.target.closest("[data-action='feedback-outcome-toggle']");
+    if (outcomeToggle) {
+      evt.preventDefault();
+      const row = outcomeToggle.closest(".feedback-row");
+      const group = row && row.querySelector(".feedback-outcomes");
+      if (group) {
+        group.hidden = !group.hidden;
+        outcomeToggle.setAttribute("aria-expanded", String(!group.hidden));
+      }
+      return;
+    }
+    const outcomeBtn = evt.target.closest("[data-action='feedback-outcome']");
+    if (outcomeBtn) {
+      evt.preventDefault();
+      const job = currentJob();
+      if (job) {
+        const verdict = (state.feedback[job.url] && state.feedback[job.url].verdict) || "apply";
+        recordFeedback(job, verdict, outcomeBtn.dataset.outcome);
+      }
+      return;
+    }
+    const editBtn = evt.target.closest("[data-action='feedback-edit']");
+    if (editBtn) {
+      evt.preventDefault();
+      const job = currentJob();
+      if (job) {
+        delete state.feedback[job.url];
+        renderDetail();
+      }
+      return;
+    }
     const filterBtn = evt.target.closest("[data-verdict-filter]");
     if (filterBtn) {
       evt.preventDefault();
@@ -724,15 +859,19 @@ const TalentForgeJobs = (() => {
   return {
     DEFAULT_RISK_WHY,
     EMPTY_FILTER_HINT,
+    FEEDBACK_VERDICT_LABEL,
     LOCAL_FIXTURE_JOBS,
+    OUTCOME_LABEL,
     clip,
     collectCities,
     countStats,
     esc,
     filterJobs,
     fmtAt,
+    fmtDay,
     renderEmptyState,
     renderEvidenceChain,
+    renderFeedbackRow,
     renderGapBlock,
     renderJobDetail,
     renderJobList,

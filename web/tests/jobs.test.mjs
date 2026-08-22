@@ -104,6 +104,79 @@ test("renderRiskNote 无 why 字段时给通用知情文案", () => {
   assert.doesNotMatch(withWhy, /结构性风险点/);
 });
 
+/* ---------- 反馈行（M4 spec §3） ---------- */
+
+test("renderFeedbackRow 未记录态：三轻量按钮 + outcome 四按钮默认隐藏", () => {
+  const html = Jobs.renderFeedbackRow(FIXTURE[0], null);
+  assert.match(html, /feedback-row/);
+  assert.match(html, /feedback-row__label/);
+  assert.match(html, /data-action="feedback-decided" data-verdict="apply"/);
+  assert.match(html, /data-action="feedback-decided" data-verdict="skip"/);
+  assert.match(html, /data-action="feedback-outcome-toggle"/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.match(html, />我已投递</);
+  assert.match(html, />我跳过了</);
+  assert.match(html, />记录结果</);
+  assert.match(html, /btn--ghost btn--sm/);
+  /* outcome 四小按钮组存在但整体 hidden */
+  const group = html.match(/<div class="feedback-outcomes"[^>]*>/);
+  assert.ok(group, "应含 feedback-outcomes 组");
+  assert.match(group[0], /hidden/);
+  for (const [key, label] of [
+    ["interview", "面试中"],
+    ["rejected", "已拒"],
+    ["offer", "offer"],
+    ["no_response", "无回音"],
+  ]) {
+    assert.match(html, new RegExp(`data-action="feedback-outcome" data-outcome="${key}"`));
+    assert.match(html, new RegExp(`>${label}<`));
+  }
+  /* 未记录态不含徽章与改按钮 */
+  assert.doesNotMatch(html, /已记录：/);
+  assert.doesNotMatch(html, /feedback-edit/);
+});
+
+test("renderFeedbackRow 已记录态：徽章文本 + 改按钮回未记录态", () => {
+  const fb = { verdict: "apply", outcome: null, at: new Date(2026, 7, 22, 10, 30) };
+  const html = Jobs.renderFeedbackRow(FIXTURE[0], fb);
+  assert.match(html, /status-pill status-pill--active/);
+  assert.match(html, /已记录：投递 08-22/);
+  assert.match(html, /data-action="feedback-edit"/);
+  assert.match(html, /feedback-row--done/);
+  assert.doesNotMatch(html, /feedback-decided/);
+  assert.doesNotMatch(html, /feedback-outcomes/);
+  /* skip/hold 的中文映射 */
+  const skip = Jobs.renderFeedbackRow(FIXTURE[0], { verdict: "skip", outcome: null, at: new Date(2026, 7, 22) });
+  assert.match(skip, /已记录：跳过 08-22/);
+});
+
+test("renderJobDetail 第二参数 feedback 联动反馈行（缺省为未记录态）", () => {
+  const plain = Jobs.renderJobDetail(FIXTURE[0]);
+  assert.match(plain, /feedback-decided/);
+  assert.match(plain, /聊聊这个岗位[\s\S]*feedback-row/);
+  const done = Jobs.renderJobDetail(FIXTURE[0], { verdict: "apply", outcome: null, at: new Date(2026, 7, 22) });
+  assert.match(done, /已记录：投递 08-22/);
+});
+
+test("XSS：反馈行 verdict/岗位标题注入一律转义", () => {
+  const evilVerdict = { verdict: '<script>alert(1)</script>', outcome: null, at: new Date(2026, 7, 22) };
+  const html = Jobs.renderFeedbackRow(FIXTURE[0], evilVerdict);
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /&lt;script&gt;/);
+  const evilJob = { ...FIXTURE[0], title: '"><img src=x onerror=alert(2)>' };
+  for (const out of [Jobs.renderFeedbackRow(evilJob, null), Jobs.renderFeedbackRow(evilJob, evilVerdict)]) {
+    assert.doesNotMatch(out, /<img src=x/);
+    assert.match(out, /&quot;&gt;&lt;img src=x/);
+  }
+});
+
+test("fmtDay 输出 MM-DD（Date/ISO 兼容，非法值空串）", () => {
+  assert.equal(Jobs.fmtDay(new Date(2026, 7, 22)), "08-22");
+  assert.equal(Jobs.fmtDay(new Date(2026, 0, 3)), "01-03");
+  assert.equal(Jobs.fmtDay(""), "");
+  assert.equal(Jobs.fmtDay(null), "");
+});
+
 /* ---------- 筛选逻辑（纯函数） ---------- */
 
 test("filterJobs 空筛选返回全部 8 个", () => {

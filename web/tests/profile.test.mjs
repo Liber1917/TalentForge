@@ -104,6 +104,30 @@ test("renderUtilityTab 空偏好输出提示", () => {
   assert.match(html, /还没有记录效用偏好/);
 });
 
+test("renderUtilityTab evidence 非空追加决策回流小字；空数组/缺字段不显示（M4）", () => {
+  const prefs = {
+    salary: {
+      attribute: "salary",
+      ordering: ["40万以上", "30-40万", "20-30万"],
+      evidence: ["2026-08-22 apply 观澜数据(30-45K·14薪)", "2026-08-21 apply 睿达网络(28-45K·15薪)"],
+    },
+    work_mode: { attribute: "work_mode", ordering: ["弹性工时"], evidence: [] },
+    tech_stack: { attribute: "tech_stack", ordering: ["Python"] },
+  };
+  const html = Profile.renderUtilityTab(prefs);
+  assert.match(html, /pref-row__evidence/);
+  assert.match(html, /（含 2 次决策回流）/);
+  /* 小字位于 ordering 之后 */
+  assert.ok(html.indexOf("20-30万") < html.indexOf("（含 2 次决策回流）"));
+  /* evidence 数组只出现一次（空数组与缺字段均不渲染） */
+  assert.equal((html.match(/pref-row__evidence/g) || []).length, 1);
+  const noEvidence = Profile.renderUtilityTab(FIXTURE.utility_preferences);
+  assert.doesNotMatch(noEvidence, /pref-row__evidence/);
+  assert.doesNotMatch(noEvidence, /决策回流/);
+  const emptyArr = Profile.renderUtilityTab({ salary: { attribute: "salary", ordering: ["40万以上"], evidence: [] } });
+  assert.doesNotMatch(emptyArr, /pref-row__evidence/);
+});
+
 /* ---------- 结构位置 ---------- */
 
 test("renderStructuralTab 八格标签齐全 + 保留工资格式化", () => {
