@@ -226,3 +226,11 @@ test("renderSourceCard home 字段不进 href（注入无效）；未知 key 仍
   assert.match(evil, /href="goto\.html\?key=x"/);
   assert.doesNotMatch(evil, /" onmouseover=/, "home 注入不进 href");
 });
+
+test("partials/sources.html 页头含 VPN/代理直连提示（warn 样式）", () => {
+  const partial = readFileSync(new URL("../partials/sources.html", import.meta.url), "utf8");
+  assert.match(partial, /sources-head__hint--warn/);
+  assert.match(partial, /先关代理再试/);
+  const fallback = Sources.FALLBACK_PARTIAL || "";
+  assert.match(fallback, /先关代理再试/, "兜底骨架与 partial 提示保持一致");
+});

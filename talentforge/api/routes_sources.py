@@ -39,8 +39,7 @@ _SET_COOKIE_CLEARED_RE = re.compile(r"=\s*;|Expires=Thu, 01 Jan 1970")
 
 _SOURCE_NOTES = {
     "boss": "粘贴浏览器复制的 cookie 串；留空保存不覆盖现有值；"
-    "env TALENTFORGE_BOSS_COOKIE 优先于页面保存。"
-    "Boss 为国内站点：若官网被弹回或打不开，多为代理/VPN 出口被风控——请对本站直连后重试",
+    "env TALENTFORGE_BOSS_COOKIE 优先于页面保存",
     "bilibili": "由浏览器插件登录态采集，无需配置 cookie",
     "zhihu": "由浏览器插件登录态采集，无需配置 cookie",
     "github": "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",

@@ -945,6 +945,7 @@
   font-size: var(--fs-body-sm);
   color: var(--text-secondary);
 }
+.sources-head__hint--warn { color: var(--hold); }
 
 /* 源卡列表：单列阅读宽（凭据粘贴不宜分栏） */
 .sources-list {

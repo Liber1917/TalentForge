@@ -35,6 +35,7 @@ const TalentForgeSources = (() => {
   <header class="sources-head">
     <h2 class="sources-head__title">平台源</h2>
     <p class="sources-head__hint">管理各数据平台的接入方式与凭据</p>
+    <p class="sources-head__hint sources-head__hint--warn">国内站（Boss/B站/知乎）请直连访问：开 VPN/代理可能被风控拦截——官网打不开或被弹回时，先关代理再试</p>
   </header>
   <div class="sources-list" id="sources-list" role="list" aria-label="平台源列表"></div>
 </div>`;
