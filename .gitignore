@@ -12,3 +12,6 @@ build/
 
 # SDD scratch workspace
 .superpowers/
+
+# 运行时 SQLite / 本地数据产物
+data/
