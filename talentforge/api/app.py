@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from talentforge.api.events import handle_events
 from talentforge.api.routes_chat import router as chat_router
 from talentforge.api.routes_claims import router as claims_router
+from talentforge.api.routes_feedback import router as feedback_router
 from talentforge.api.routes_jobs import router as jobs_router
 from talentforge.api.routes_profile import router as profile_router
 from talentforge.api.routes_report import router as report_router
@@ -39,6 +40,7 @@ def create_app(
     - GET /api/health → {"ok": true}
     - POST /api/events → 复用 handle_events 纯函数（幂等契约不变），ok=False 时返回 400
     - M3 真端点：/api/chat /api/claims /api/jobs /api/report /api/profile（路由内用 /api 绝对路径）
+    - M4 反馈端点：/api/feedback（events POST/GET + summary，驱动偏好回流管线）
     - 静态挂载 web/ → /（无 index.html 时 404，保持挂载在最后）
     - CORS 宽松（本地工具）
 
@@ -83,6 +85,7 @@ def create_app(
     app.include_router(jobs_router)
     app.include_router(report_router)
     app.include_router(profile_router)
+    app.include_router(feedback_router)
     app.include_router(sources_router)
 
     app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")
