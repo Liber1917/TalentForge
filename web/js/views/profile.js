@@ -238,6 +238,9 @@ const TalentForgeProfile = (() => {
         const max = Math.round((Number(v.max_annual) || 0) / 10000);
         return `¥${min}–${max}万/年${v.currency ? `（${esc(v.currency)}）` : ""}`;
       }
+      if (typeof v.kind === "string") {
+        return `${esc(v.kind)}：${fmtValue(v.note ?? "")}`;
+      }
       return Object.entries(v)
         .map(([k, val]) => `${esc(k)}：${fmtValue(val)}`)
         .filter(Boolean)

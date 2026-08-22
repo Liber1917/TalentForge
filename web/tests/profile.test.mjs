@@ -230,6 +230,11 @@ test("fmtValue 格式化 布尔/数组/对象/保留工资", () => {
   assert.equal(Profile.fmtValue({ min_annual: 300000, max_annual: 350000, currency: "CNY" }), "¥30–35万/年（CNY）");
   assert.equal(Profile.fmtValue(null), "");
   assert.equal(Profile.fmtValue({ a: 1, b: "x" }), "a：1；b：x");
+  assert.equal(
+    Profile.fmtValue({ kind: "前同事", note: "可提供内推" }),
+    "前同事：可提供内推",
+    "support_network 的 kind/note 对象应中文化展示"
+  );
 });
 
 /* ---------- 本地假数据 ---------- */
