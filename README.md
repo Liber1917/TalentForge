@@ -147,3 +147,28 @@ node --test web/tests/chat.test.mjs web/tests/jobs.test.mjs web/tests/profile.te
 ### 真实验收步骤
 
 详见 `docs/research/m3-acceptance.md`：离线假数据演示（§1）、真后端联调数据流（§2）、验证证据（§3）、限制与 pending-user 清单（§4）。
+
+---
+
+## M4 反馈闭环（显示性偏好回流）
+
+记录你的真实求职行为 → 偏好序自动微调 → 画像越用越准（D15 稳定核心补齐）。
+
+### 使用
+
+1. 工作台（`#/jobs`）选岗位 → 详情底部"我的行动"：
+   - **我已投递 / 我跳过了**：一键记录决策（你的真实行为，覆盖系统建议）
+   - **记录结果**：展开 面试中/已拒/offer/无回音
+2. 画像页（`#/profile`）效用轨查看回流效果：`薪资 30-40万›40万以上…（含 N 次决策回流）`
+   - **apply + offer/interview → 该薪资段位自动升 1 位**；其他行为记入 evidence 注释
+3. 数据落 `data/feedback_log.json`（幂等：同岗位同动作更新不重复），偏好写回画像文件
+
+### API
+
+| 端点 | 方法 | 用途 |
+|---|---|---|
+| `/api/feedback/events` | POST | 记录决策/结果，驱动偏好回流 + 叙事修正 |
+| `/api/feedback/events?limit=50` | GET | 最近回流条目（倒序） |
+| `/api/feedback/summary` | GET | 决策分布统计 |
+
+规则版无 LLM 参与偏好（D18 人机边界）；详见 `docs/research/m4-acceptance.md`。
