@@ -681,3 +681,249 @@
   .jobs-verdict { flex: 1; }
   .verdict-filter { flex: 1; }
 }
+
+/* ===================== 画像视图补充（Task 6） ===================== */
+
+.profile-layout { display: flex; flex-direction: column; gap: var(--space-5); }
+
+/* 画像头部：姓名 + 一句话叙事（衬线大字引言）+ 导出按钮 */
+.profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.profile-head__name { margin: 0; }
+.profile-head__identity {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--fs-card-title);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* tablist：sand 底 pill 组（复用工作台 verdict 筛选视觉语言） */
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background-color: var(--surface-sand);
+  border-radius: var(--radius-pill);
+}
+.profile-tab {
+  min-height: calc(var(--control-min) - var(--space-2));
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.profile-tab:hover { color: var(--text-primary); }
+.profile-tab.is-active,
+.profile-tab[aria-selected="true"] {
+  background-color: var(--surface-secondary);
+  color: var(--accent);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.profile-panel { min-width: 0; }
+
+/* ---------- 待定池 tab ---------- */
+.pool { display: flex; flex-direction: column; gap: var(--space-5); }
+.pool-trial { display: flex; flex-direction: column; gap: var(--space-3); }
+.pool-empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+/* active/archived 折叠区（历史主张） */
+.pool-fold {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-secondary);
+  padding: var(--space-4);
+}
+.pool-fold__summary {
+  list-style: none;
+  font-size: var(--fs-body-sm);
+  color: var(--text-secondary);
+}
+.pool-fold__summary::-webkit-details-marker { display: none; }
+.pool-fold__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+/* ---------- 叙事轨 tab ---------- */
+.narrative { display: flex; flex-direction: column; gap: var(--space-5); }
+.narrative__identity {
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+  font-family: var(--font-serif);
+  font-size: var(--fs-page-title);
+  line-height: 1.4;
+  color: var(--text-primary);
+  background-color: var(--surface-secondary);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: var(--radius-inner);
+}
+.profile-section { display: flex; flex-direction: column; gap: var(--space-3); }
+.narrative__drives {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* 标签 pill 组（价值观） */
+.tag-pills { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-6);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-body-sm);
+  color: var(--text-primary);
+  background-color: var(--surface-sand);
+  border: 1px solid var(--border-strong);
+}
+
+/* ---------- 效用轨 tab ---------- */
+.pref-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.pref-row { display: flex; flex-direction: column; gap: var(--space-2); }
+.pref-row__order {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+}
+.pref-row__arrow { color: var(--accent); padding-inline: var(--space-2); }
+
+/* ---------- 结构位置 tab：八格网格（D17） ---------- */
+.structural { display: flex; flex-direction: column; gap: var(--space-5); }
+/* 2 列网格；>1024px 桌面 3 列 */
+.eight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+@media (min-width: 1025px) {
+  .eight-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.eight-cell { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.eight-cell__value {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.eight-cell__empty { color: var(--text-tertiary); }
+
+.structural__extras { display: flex; flex-direction: column; gap: var(--space-4); }
+.eight-block { display: flex; flex-direction: column; gap: var(--space-2); }
+.eight-block__list {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-body-sm);
+}
+/* 市场侧灰置（D17：市场侧由系统从岗位数据估，数据积累后启用） */
+.eight-market {
+  padding: var(--space-4);
+  font-size: var(--fs-body-sm);
+  color: var(--text-tertiary);
+  background-color: var(--surface-sand);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+
+/* ---------- 简历校对（resume-review diff 视图） ---------- */
+.resume-review {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-secondary);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.resume-review__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.resume-review__file {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--text-tertiary);
+}
+.resume-review__done {
+  font-size: var(--fs-caption);
+  color: var(--ok);
+}
+.diff-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-inner);
+}
+.diff-row.is-confirmed { opacity: 0.6; }
+.diff-row__label { font-size: var(--fs-body-sm); font-weight: 500; }
+.diff-row__cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+@media (min-width: 640px) {
+  .diff-row__cols { grid-template-columns: 1fr 1fr; }
+}
+.diff-cell { display: flex; flex-direction: column; gap: var(--space-1); }
+.diff-cell__tag { font-size: var(--fs-caption); color: var(--text-tertiary); }
+.diff-cell--orig .diff-cell__tag { color: var(--text-tertiary); }
+.diff-cell--extract .diff-cell__tag { color: var(--ok); }
+.diff-cell p {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+  background-color: var(--surface-sand);
+  border-radius: var(--radius-inner);
+  padding: var(--space-2) var(--space-3);
+}
+.diff-cell--extract p { background-color: var(--ok-bg); }
+.diff-row .btn { align-self: flex-start; }
+
+/* ---------- 画像移动端（375 档）：tab 整行、八格仍双列紧凑 ---------- */
+@media (max-width: 639px) {
+  .profile-tabs { width: 100%; }
+  .profile-tab { flex: 1; justify-content: center; padding-inline: var(--space-2); }
+  .profile-head__identity { font-size: var(--fs-body); }
+  .narrative__identity { font-size: var(--fs-card-title); }
+}

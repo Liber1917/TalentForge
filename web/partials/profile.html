@@ -1,0 +1,59 @@
+<!-- 画像面板骨架（Task 6）：头部 + 四 tab + 各 tab 内容容器 + 简历校对 + 导出。
+     由 profile.js 在进入 #/profile 时 fetch 加载并注入 #profile 容器；
+     fetch 失败时使用 profile.js 内置兜底模板（保持一致）。
+     tab 采用 tablist/tab/tabpanel ARIA 模式（DESIGN.md §7）。 -->
+<div class="profile-layout">
+  <header class="profile-head">
+    <div class="profile-head__text">
+      <h2 class="profile-head__name" id="profile-name"></h2>
+      <p class="profile-head__identity" id="profile-identity"></p>
+    </div>
+    <button class="btn btn--secondary" id="profile-export" type="button">导出 JSON</button>
+  </header>
+
+  <div class="profile-tabs" id="profile-tabs" role="tablist" aria-label="画像区块">
+    <button
+      class="profile-tab is-active"
+      type="button"
+      role="tab"
+      id="tab-pool"
+      aria-selected="true"
+      aria-controls="panel-pool"
+      data-tab="pool"
+    >待定池</button>
+    <button
+      class="profile-tab"
+      type="button"
+      role="tab"
+      id="tab-narrative"
+      aria-selected="false"
+      aria-controls="panel-narrative"
+      data-tab="narrative"
+    >叙事</button>
+    <button
+      class="profile-tab"
+      type="button"
+      role="tab"
+      id="tab-utility"
+      aria-selected="false"
+      aria-controls="panel-utility"
+      data-tab="utility"
+    >效用</button>
+    <button
+      class="profile-tab"
+      type="button"
+      role="tab"
+      id="tab-structural"
+      aria-selected="false"
+      aria-controls="panel-structural"
+      data-tab="structural"
+    >结构位置</button>
+  </div>
+
+  <div class="profile-panel" id="panel-pool" role="tabpanel" aria-labelledby="tab-pool" tabindex="0"></div>
+  <div class="profile-panel" id="panel-narrative" role="tabpanel" aria-labelledby="tab-narrative" tabindex="0" hidden></div>
+  <div class="profile-panel" id="panel-utility" role="tabpanel" aria-labelledby="tab-utility" tabindex="0" hidden></div>
+  <div class="profile-panel" id="panel-structural" role="tabpanel" aria-labelledby="tab-structural" tabindex="0" hidden></div>
+
+  <section class="profile-resume" id="profile-resume" aria-label="简历校对"></section>
+</div>
