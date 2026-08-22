@@ -18,6 +18,7 @@ from talentforge.domain.profile import SalaryRange
 from talentforge.sources.boss import build_search_url, parse_boss_cards, parse_salary
 from talentforge.sources.captcha import detect_captcha_keywords
 from talentforge.sources.cookies import load_boss_cookies
+from talentforge.sources.stealth import LAUNCH_ARGS, apply_stealth
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,9 @@ class BossScraper:
 
     async def __aenter__(self) -> BossScraper:
         self._playwright = await async_playwright().start()
-        self._browser = await self._playwright.chromium.launch(headless=self._headless)
+        self._browser = await self._playwright.chromium.launch(
+            headless=self._headless, args=list(LAUNCH_ARGS)
+        )
         return self
 
     async def __aexit__(self, *args: object) -> None:
@@ -74,6 +77,7 @@ class BossScraper:
         jobs: list[Job] = []
         for page_no in range(1, pages + 1):
             context = await self._browser.new_context(user_agent=USER_AGENT)
+            apply_stealth(context)
             try:
                 try:
                     await context.add_cookies(load_boss_cookies())

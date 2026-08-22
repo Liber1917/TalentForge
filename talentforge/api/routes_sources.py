@@ -16,12 +16,14 @@ import re
 
 import httpx
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 
 from talentforge.sources.cookies import (
     get_boss_cookie_summary,
     resolve_boss_raw,
     save_boss_cookie,
 )
+from talentforge.sources.qr_login import current_session, start_session
 
 router = APIRouter(tags=["sources"])
 
@@ -145,3 +147,37 @@ async def verify_boss() -> dict:
     except httpx.HTTPError as exc:
         return {"ok": False, "detail": f"网络错误：{exc}"}
     return _judge_verify(resp)
+
+
+# ---------------- 扫码登录（M4：绕开 DevTools 反调试的 cookie 获取通道） ----------------
+
+
+@router.post("/api/sources/boss/qr-login/start")
+async def qr_login_start() -> dict:
+    """启动扫码登录会话：服务器开浏览器到登录页，二维码由 qr-image 端点轮询取。"""
+    session = await start_session()
+    return session.status()
+
+
+@router.get("/api/sources/boss/qr-login/status")
+def qr_login_status() -> dict:
+    """会话状态（starting/waiting/success/failed + error）。"""
+    session = current_session()
+    if session is None:
+        return {"state": "idle"}
+    status = session.status()
+    if status["state"] == "success":
+        status["cookie"] = get_boss_cookie_summary()
+    return status
+
+
+@router.get("/api/sources/boss/qr-login/qr-image")
+def qr_login_image() -> JSONResponse:
+    """当前二维码 PNG（base64 前端直显）；会话无图返回 404。"""
+    session = current_session()
+    if session is None or not session.qr_png_b64():
+        raise HTTPException(status_code=404, detail="无进行中的扫码会话")
+    return JSONResponse(
+        content={"png_base64": session.qr_png_b64()},
+        headers={"Cache-Control": "no-store"},
+    )

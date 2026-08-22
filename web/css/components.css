@@ -1106,3 +1106,26 @@
   font-size: var(--fs-caption);
   color: var(--text-tertiary);
 }
+
+/* ---------- 扫码登录（Boss 卡内嵌二维码区） ---------- */
+.qr-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-inner);
+}
+.qr-login__img {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  background-color: var(--surface-secondary);
+}
+.qr-login__hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  text-align: center;
+}

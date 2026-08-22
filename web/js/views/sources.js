@@ -87,17 +87,29 @@ const TalentForgeSources = (() => {
   /** cookie 源展开区：说明 + 粘贴框（留空保存不覆盖）+ 保存/测试连接 + 状态行。 */
   function renderCookieExpand(source) {
     const key = esc(source.key);
+    const qrEntry = key === "boss"
+      ? `
+          <div class="source-card__actions">
+            <button class="btn btn--primary btn--sm" type="button" data-action="qr-start">扫码登录（推荐）</button>
+          </div>
+          <div class="qr-login" data-role="qr-login" hidden>
+            <img class="qr-login__img" alt="Boss 直聘登录二维码" data-role="qr-img" />
+            <p class="qr-login__hint">手机 Boss App 扫码 → 登录后自动保存 cookie（页面别关）</p>
+          </div>`
+      : "";
     return `
       <details class="source-card__expand">
         <summary class="source-card__summary">接入方式与设置</summary>
         <div class="source-card__body">
           <p class="source-card__note">${esc(source.note || "")}</p>
-          <label class="overline" for="source-input-${key}">cookie 粘贴框</label>
+          <div class="overline">方式一：扫码登录</div>
+          ${qrEntry}
+          <div class="overline">方式二：粘贴 cookie</div>
           <textarea class="input source-card__textarea" id="source-input-${key}" rows="3"
                     placeholder="wt2=…; wbg=…（留空保存不覆盖现有值）"
                     autocomplete="off" spellcheck="false" data-role="source-input"></textarea>
           <div class="source-card__actions">
-            <button class="btn btn--primary btn--sm" type="button"
+            <button class="btn btn--ghost btn--sm" type="button"
                     data-action="source-save" data-key="${key}">保存</button>
             <button class="btn btn--ghost btn--sm" type="button"
                     data-action="source-verify" data-key="${key}">测试连接</button>
@@ -297,7 +309,57 @@ const TalentForgeSources = (() => {
     }
   }
 
+  let qrPollTimer = null;
+
+  async function fetchJson(url, options) {
+    const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store", ...options });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  async function startQrLogin(host) {
+    const box = host.querySelector("[data-role='qr-login']");
+    const img = host.querySelector("[data-role='qr-img']");
+    if (!box || !img) return;
+    box.hidden = false;
+    img.alt = "正在生成二维码…";
+    try {
+      await fetchJson("/api/sources/boss/qr-login/start", { method: "POST" });
+    } catch (err) {
+      img.alt = "启动失败：后端未启动";
+      return;
+    }
+    clearInterval(qrPollTimer);
+    qrPollTimer = setInterval(async () => {
+      try {
+        const status = await fetchJson("/api/sources/boss/qr-login/status");
+        if (status.state === "success") {
+          clearInterval(qrPollTimer);
+          img.alt = "登录成功，cookie 已保存";
+          loadSources();
+          return;
+        }
+        if (status.state === "failed") {
+          clearInterval(qrPollTimer);
+          img.alt = `登录失败：${status.error || "未知错误"}`;
+          return;
+        }
+        const qr = await fetchJson("/api/sources/boss/qr-login/qr-image");
+        if (qr.png_base64) img.src = `data:image/png;base64,${qr.png_base64}`;
+      } catch (err) {
+        /* 单次轮询失败静默，下一轮重试 */
+      }
+    }, 2500);
+  }
+
   function onHostClick(evt) {
+    const qrBtn = evt.target.closest("[data-action='qr-start']");
+    if (qrBtn) {
+      evt.preventDefault();
+      const host = qrBtn.closest("[data-source-key]");
+      if (host) startQrLogin(host);
+      return;
+    }
     const saveBtn = evt.target.closest("[data-action='source-save']");
     if (saveBtn) {
       evt.preventDefault();

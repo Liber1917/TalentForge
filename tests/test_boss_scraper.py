@@ -43,10 +43,14 @@ class FakeContext:
     def __init__(self, page: FakePage) -> None:
         self._page = page
         self.add_cookies_calls: list[list[dict[str, str]]] = []
+        self.init_scripts: list[str] = []
         self.closed = False
 
-    async def add_cookies(self, cookies: list[dict[str, str]]) -> None:
+    async def add_cookies(self, cookies: list[list[dict[str, str]]]) -> None:
         self.add_cookies_calls.append(cookies)
+
+    def add_init_script(self, script: str) -> None:
+        self.init_scripts.append(script)
 
     async def new_page(self) -> FakePage:
         return self._page

@@ -221,3 +221,39 @@ def test_load_boss_cookies_prefers_env_over_saved(monkeypatch: Any, tmp_path: Pa
     monkeypatch.setenv("TALENTFORGE_BOSS_COOKIE", "wt2=envlayer1234")
     cookies = cookies_module.load_boss_cookies()
     assert [(c["name"], c["value"]) for c in cookies] == [("wt2", "envlayer1234")]
+
+
+# ---------------- 扫码登录端点（mock 会话，不真起浏览器） ----------------
+
+
+class _FakeQrSession:
+    def __init__(self, state: str = "waiting", png: str = "") -> None:
+        self.state = state
+        self.error = ""
+        self._png = png
+
+    def qr_png_b64(self) -> str:
+        return self._png
+
+    def status(self) -> dict[str, str]:
+        return {"state": self.state, "error": self.error}
+
+
+def test_qr_login_endpoints_contract(monkeypatch: Any, tmp_path: Path) -> None:
+    from talentforge.api import routes_sources as rs
+
+    client = _make_client(monkeypatch, tmp_path)
+    monkeypatch.setattr(rs, "current_session", lambda: None)
+    assert client.get("/api/sources/boss/qr-login/status").json() == {"state": "idle"}
+    assert client.get("/api/sources/boss/qr-login/qr-image").status_code == 404
+
+    session = _FakeQrSession(png="aXNob3Bl")
+    monkeypatch.setattr(rs, "current_session", lambda: session)
+    resp = client.get("/api/sources/boss/qr-login/qr-image")
+    assert resp.status_code == 200
+    assert resp.json() == {"png_base64": "aXNob3Bl"}
+
+    session.state = "success"
+    status = client.get("/api/sources/boss/qr-login/status").json()
+    assert status["state"] == "success"
+    assert "cookie" in status
