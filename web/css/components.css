@@ -568,3 +568,116 @@
   .claim-card__actions .btn { flex: 1; }
   .reflective-prompt__q { font-size: var(--fs-body); }
 }
+
+/* ===================== 工作台视图补充（Task 5） ===================== */
+
+/* 工具行：搜索 + 城市下拉 + verdict 四态 pill + 生成报告 */
+.jobs-layout { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.jobs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.jobs-toolbar__q { flex: 1 1 220px; min-width: 0; }
+.jobs-toolbar__city { flex: 0 0 auto; }
+
+/* verdict 四态筛选：sand 底 pill 组，选中 ivory 抬升 */
+.jobs-verdict {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background-color: var(--surface-sand);
+  border-radius: var(--radius-pill);
+}
+.verdict-filter {
+  min-height: calc(var(--control-min) - var(--space-2));
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.verdict-filter:hover { color: var(--text-primary); }
+.verdict-filter.is-active {
+  background-color: var(--surface-secondary);
+  color: var(--accent);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+/* 状态条 / 统计 */
+.jobs-status { font-size: var(--fs-body-sm); color: var(--text-secondary); margin: 0; }
+.jobs-status--error { color: var(--risk); }
+.jobs-count { font-size: var(--fs-caption); color: var(--text-tertiary); margin: 0; }
+
+/* 岗位列表：紧凑密度行（DESIGN.md §5 Field：verdict badge 前置） */
+.jobs-list { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.job-row { display: flex; flex-direction: column; gap: var(--space-2); }
+.job-row__head { display: flex; align-items: center; gap: var(--space-3); }
+.job-row__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-card-title);
+  line-height: var(--lh-card-title);
+}
+.job-row .card__meta { margin: 0; }
+
+/* 空态 / 未选中详情占位 */
+.jobs-empty {
+  padding: var(--space-9) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+.jobs-empty p:last-child { margin-bottom: 0; }
+.job-detail__empty {
+  padding: var(--space-9) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+
+/* 详情面板 */
+.jobs-detail { min-width: 0; }
+.job-detail__head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.job-detail__head .card__title { margin: 0; }
+.job-detail__meta { margin: 0; }
+.job-detail__url { margin: var(--space-2) 0 0; font-size: var(--fs-body-sm); }
+.job-detail__url a { color: var(--accent); }
+.job-detail__section { margin-top: var(--space-5); }
+.job-detail__risks { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+
+/* 补短板区块（能力差距 + 建议动作） */
+.job-detail__gaps { display: flex; flex-direction: column; gap: var(--space-3); }
+.job-detail__gaps-block { margin-top: var(--space-2); }
+.job-detail__sub {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-body-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.job-detail__gaps-list {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.job-detail__chat { margin-top: var(--space-5); }
+
+/* ---------- 工作台移动端：搜索框整行、报告按钮整行 ---------- */
+@media (max-width: 639px) {
+  .jobs-toolbar__q { flex-basis: 100%; }
+  .jobs-toolbar .btn { flex: 1; }
+  .jobs-verdict { flex: 1; }
+  .verdict-filter { flex: 1; }
+}

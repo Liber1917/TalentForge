@@ -1,0 +1,31 @@
+<!-- 决策工作台骨架（Task 5）：筛选工具行 + 列表/详情双栏 + 状态/统计。
+     由 jobs.js 在进入 #/jobs 时 fetch 加载并注入 #jobs 容器；
+     fetch 失败时使用 jobs.js 内置兜底模板（保持一致）。 -->
+<div class="jobs-layout">
+  <div class="jobs-toolbar">
+    <input
+      class="input jobs-toolbar__q"
+      id="jobs-q"
+      type="search"
+      placeholder="搜索标题/公司/地点…"
+      aria-label="搜索岗位"
+      autocomplete="off"
+    />
+    <select class="input jobs-toolbar__city" id="jobs-city" aria-label="按城市筛选"></select>
+    <div class="jobs-verdict" id="jobs-verdict" role="group" aria-label="按判定筛选">
+      <button class="verdict-filter is-active" type="button" data-verdict-filter="" aria-pressed="true">全部</button>
+      <button class="verdict-filter" type="button" data-verdict-filter="apply" aria-pressed="false">投</button>
+      <button class="verdict-filter" type="button" data-verdict-filter="hold" aria-pressed="false">观望</button>
+      <button class="verdict-filter" type="button" data-verdict-filter="skip" aria-pressed="false">不投</button>
+    </div>
+    <button class="btn btn--primary" id="jobs-report" type="button">生成报告</button>
+  </div>
+
+  <p class="jobs-status" id="jobs-status" role="status" aria-live="polite" hidden></p>
+  <p class="jobs-count" id="jobs-count" aria-label="岗位统计"></p>
+
+  <div class="l-split jobs-split">
+    <section class="jobs-list" id="jobs-list" role="list" aria-label="岗位列表"></section>
+    <section class="jobs-detail" id="jobs-detail" role="region" aria-label="岗位详情"></section>
+  </div>
+</div>
