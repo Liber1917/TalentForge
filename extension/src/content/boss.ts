@@ -1,42 +1,88 @@
 // Boss content-script entry (document_idle). ACTIVE collector per D25:
-// on job-search pages it harvests visible job cards (auto + on scroll)
-// and posts deduped batches to /api/jobs/batch on the local backend.
-import { collectVisibleJobs } from "../shared/platforms/boss";
+// harvests job cards via the wapi channel (new SPA page) with a DOM fallback,
+// posts deduped batches to /api/jobs/batch. No strict URL guard — runs on
+// load, scroll, and SPA URL changes so both /web/geek/job and legacy
+// /c<city>-p<position>/ search pages are covered.
+import {
+  collectVisibleJobs,
+  extractCityCode,
+  extractSearchQuery,
+  isSearchPage,
+  mapWapiJobList,
+} from "../shared/platforms/boss";
 import { backendEndpoint } from "../shared/backend-endpoint";
 
-const FLUSH_DEBOUNCE_MS = 1_500;
+const WAPI_PAGE_URL = "/wapi/zpgeek/search/joblist.json";
 const sentUrls = new Set<string>();
 
-function postJobs(jobs: unknown[]): Promise<void> {
-  return fetch(`${backendEndpoint()}/jobs/batch`, {
+function postJobs(jobs: unknown[]): void {
+  if (jobs.length === 0) return;
+  fetch(`${backendEndpoint()}/jobs/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ source: "boss", jobs }),
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    })
-    .catch(() => {
-      // Backend down — drop the batch; the next scroll re-harvests anyway.
+  }).catch(() => {
+    // Backend down — drop the batch; next scroll/URL change re-harvests.
+  });
+}
+
+/** wapi channel: same-origin fetch of the job-list JSON (cookies+stoken auto). */
+async function harvestViaWapi(): Promise<void> {
+  const city = extractCityCode(window.location.href);
+  const query = extractSearchQuery(window.location.href);
+  const params = new URLSearchParams({
+    query: query ?? "",
+    city: city ?? "101280600",
+    page: "1",
+    pageSize: "30",
+  });
+  try {
+    const res = await fetch(`${WAPI_PAGE_URL}?${params.toString()}`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
     });
+    if (!res.ok) return;
+    const body = (await res.json()) as Record<string, unknown>;
+    const fresh = mapWapiJobList(body).filter((job) => !sentUrls.has(job.url));
+    for (const job of fresh) sentUrls.add(job.url);
+    postJobs(fresh);
+  } catch {
+    // wapi unavailable (legacy page / login wall) — DOM fallback below.
+  }
 }
 
-let timer: number | null = null;
-
-function harvest(): void {
+/** DOM channel fallback: harvest visible cards from the page. */
+function harvestDom(): void {
   const fresh = collectVisibleJobs().filter((job) => !sentUrls.has(job.url));
-  if (fresh.length === 0) return;
   for (const job of fresh) sentUrls.add(job.url);
-  if (timer !== null) window.clearTimeout(timer);
-  timer = window.setTimeout(() => {
-    timer = null;
-    void postJobs(fresh);
-  }, FLUSH_DEBOUNCE_MS);
+  postJobs(fresh);
 }
 
-if (window.location.pathname.includes("/web/geek/job")) {
-  harvest();
-  window.addEventListener("scroll", () => harvest(), { passive: true });
+let currentUrl = window.location.href;
+function onUrlChanged(): void {
+  const next = window.location.href;
+  if (next === currentUrl) return;
+  currentUrl = next;
+  if (isSearchPage(next)) {
+    void harvestViaWapi();
+    harvestDom();
+  }
+}
+
+// ---- wiring ----
+if (isSearchPage(window.location.href)) {
+  void harvestViaWapi();
+  harvestDom();
+}
+window.addEventListener("scroll", () => harvestDom(), { passive: true });
+window.addEventListener("popstate", onUrlChanged);
+for (const method of ["pushState", "replaceState"] as const) {
+  const original = history[method].bind(history);
+  history[method] = function patched(...args: Parameters<History["pushState"]>) {
+    const result = original.apply(this, args);
+    onUrlChanged();
+    return result;
+  };
 }
 
 (globalThis as Record<string, unknown>).__talentforge_boss = true;

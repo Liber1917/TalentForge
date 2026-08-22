@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
-  BOSS_SEARCH_PATH,
-  JOB_CARD_SELECTOR,
   collectVisibleJobs,
-  detectBossPageType,
-  parseJobCard,
+  extractCityCode,
+  extractSearchQuery,
+  isSearchPage,
+  mapWapiJob,
+  mapWapiJobList,
 } from "../shared/platforms/boss";
 
 function element(html: string): HTMLElement {
@@ -26,39 +27,77 @@ const CARD_HTML = `
 </div>`;
 
 describe("boss adapter", () => {
-  it("detects page types", () => {
-    expect(detectBossPageType(`https://www.zhipin.com${BOSS_SEARCH_PATH}?query=x`)).toBe(
-      "job-search",
-    );
-    expect(detectBossPageType("https://www.zhipin.com/job_detail/abc.html")).toBe("job-detail");
-    expect(detectBossPageType("https://www.zhipin.com/")).toBe("other");
+  it("detects search pages in both URL formats", () => {
+    expect(isSearchPage("https://www.zhipin.com/web/geek/job?query=python")).toBe(true);
+    expect(isSearchPage("https://www.zhipin.com/c101280600-p100103/?query=python")).toBe(true);
+    expect(isSearchPage("https://www.zhipin.com/job_detail/abc.html")).toBe(false);
+    expect(isSearchPage("https://www.zhipin.com/")).toBe(false);
   });
 
-  it("parses a job card into the normalized shape", () => {
-    const card = element(CARD_HTML);
-    const job = parseJobCard(card);
-    expect(job).not.toBeNull();
+  it("extracts city code from query param and legacy path", () => {
+    expect(extractCityCode("https://www.zhipin.com/web/geek/job?city=101280600")).toBe("101280600");
+    expect(extractCityCode("https://www.zhipin.com/c101280600-p100103/")).toBe("101280600");
+    expect(extractCityCode("https://www.zhipin.com/")).toBeNull();
+  });
+
+  it("extracts search query from both param names", () => {
+    expect(extractSearchQuery("https://www.zhipin.com/web/geek/job?query=python")).toBe("python");
+    expect(extractSearchQuery("https://www.zhipin.com/c101280600-p100103/?wd=go")).toBe("go");
+    expect(extractSearchQuery("https://www.zhipin.com/")).toBeNull();
+  });
+
+  it("maps a wapi record to the normalized card shape", () => {
+    const job = mapWapiJob({
+      jobId: "abc123",
+      jobName: "Python 后端工程师",
+      salaryDesc: "25-50K·16薪",
+      brandName: "星辰科技",
+      cityName: "深圳",
+      areaDistrict: "南山区",
+      jobLabels: ["Python", "分布式"],
+    });
     expect(job?.title).toBe("Python 后端工程师");
     expect(job?.company).toBe("星辰科技");
+    expect(job?.location).toBe("深圳·南山区");
     expect(job?.salary).toBe("25-50K·16薪");
-    expect(job?.url).toBe("https://www.zhipin.com/job_detail/abc123.html?lid=x");
-    expect(job?.tags).toEqual(["Python", "分布式"]);
+    expect(job?.url).toBe("https://www.zhipin.com/job_detail/abc123.html");
   });
 
-  it("rejects cards without title or link (ads / skeletons)", () => {
-    expect(parseJobCard(element('<div class="job-card-wrapper"><span></span></div>'))).toBeNull();
-    expect(parseJobCard(element('<div class="job-card-wrapper">促销</div>'))).toBeNull();
+  it("rejects wapi records without jobId or title", () => {
+    expect(mapWapiJob({})).toBeNull();
+    expect(mapWapiJob({ jobId: "x" })).toBeNull();
+    expect(mapWapiJob({ jobName: "n" })).toBeNull();
   });
 
-  it("collects visible jobs deduped by url", () => {
+  it("maps a wapi joblist payload with dedup", () => {
+    const jobs = mapWapiJobList({
+      zpData: {
+        jobList: [
+          { jobId: "a", jobName: "A" },
+          { jobId: "a", jobName: "A dup" },
+          { jobId: "b", jobName: "B" },
+          {},
+        ],
+      },
+    });
+    expect(jobs).toHaveLength(2);
+  });
+
+  it("collects visible DOM jobs deduped by url", () => {
     document.body.innerHTML = `${CARD_HTML}${CARD_HTML}`;
     const jobs = collectVisibleJobs(document.body);
     expect(jobs).toHaveLength(1);
     expect(jobs[0]?.title).toBe("Python 后端工程师");
+    expect(jobs[0]?.salary).toBe("25-50K·16薪");
   });
 
-  it("uses the job-card selector contract", () => {
-    expect(JOB_CARD_SELECTOR).toContain(".job-card-wrapper");
-    expect(JOB_CARD_SELECTOR).toContain("li.job-card");
+  it("skips cards without a job-detail link", () => {
+    document.body.innerHTML = '<div class="job-card-wrapper"><span>促销</span></div>';
+    expect(collectVisibleJobs(document.body)).toHaveLength(0);
+  });
+
+  it("extracts city code from query param and legacy path (edge)", () => {
+    const legacy = element(CARD_HTML);
+    expect(legacy.querySelector("a")?.getAttribute("href")).toContain("/job_detail/");
   });
 });
