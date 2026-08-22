@@ -74,6 +74,10 @@ def test_get_sources_lists_four_entries(monkeypatch: Any, tmp_path: Path) -> Non
     assert "TALENTFORGE_BOSS_COOKIE" in by_key["boss"]["note"]
     assert "无需配置" in by_key["bilibili"]["note"]
     assert "公开" in by_key["github"]["note"]
+    assert by_key["boss"]["home"] == "https://www.zhipin.com/"
+    assert by_key["bilibili"]["home"] == "https://www.bilibili.com/"
+    assert by_key["zhihu"]["home"] == "https://www.zhihu.com/"
+    assert by_key["github"]["home"] == "https://github.com/"
 
 
 def test_save_credential_then_get_reflects_saved_without_leak(

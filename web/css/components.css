@@ -978,7 +978,16 @@
   padding: var(--space-1) var(--space-3);
   white-space: nowrap;
 }
-.source-card__head .status-pill { margin-inline-start: auto; }
+.source-card__head > :last-child { margin-inline-start: auto; }
+
+/* 官网外链（卡面右侧，target=_blank 新窗口打开） */
+.source-card__site {
+  font-size: var(--fs-body-sm);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.source-card__site:hover { text-decoration: underline; }
 
 /* 脱敏摘要：等宽字体展示掩码串，无"复制原值"入口 */
 .source-card__masked {
@@ -1061,5 +1070,5 @@
 /* ---------- 平台源移动端（375 档）：操作按钮整行 ---------- */
 @media (max-width: 639px) {
   .source-card__actions .btn { flex: 1; }
-  .source-card__head .status-pill { margin-inline-start: 0; }
+  .source-card__head > :last-child { margin-inline-start: 0; }
 }

@@ -21,6 +21,7 @@ const FIXTURE_SOURCES = [
     key: "boss",
     name: "Boss 直聘",
     kind: "cookie",
+    home: "https://www.zhipin.com/",
     status: { source: "saved", masked: "wt2=****9876" },
     note: "粘贴浏览器复制的 cookie 串；留空保存不覆盖现有值；env TALENTFORGE_BOSS_COOKIE 优先于页面保存",
   },
@@ -28,6 +29,7 @@ const FIXTURE_SOURCES = [
     key: "bilibili",
     name: "B站",
     kind: "extension",
+    home: "https://www.bilibili.com/",
     status: { source: "extension", masked: "" },
     note: "由浏览器插件登录态采集，无需配置 cookie",
   },
@@ -35,6 +37,7 @@ const FIXTURE_SOURCES = [
     key: "zhihu",
     name: "知乎",
     kind: "extension",
+    home: "https://www.zhihu.com/",
     status: { source: "extension", masked: "" },
     note: "由浏览器插件登录态采集，无需配置 cookie",
   },
@@ -42,6 +45,7 @@ const FIXTURE_SOURCES = [
     key: "github",
     name: "GitHub",
     kind: "public",
+    home: "https://github.com/",
     status: { source: "public", masked: "" },
     note: "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",
   },
@@ -193,4 +197,28 @@ test("partials/sources.html 与 FALLBACK_PARTIAL 含头部 + 列表容器骨架"
     assert.match(doc, /aria-label="平台源列表"/);
     assert.match(doc, /平台源/);
   }
+});
+
+/* ---------- 官网外链 ---------- */
+
+test("renderSourceCard 卡面含平台官网外链（新窗口 + noopener）", () => {
+  const boss = Sources.renderSourceCard(FIXTURE_SOURCES[0]);
+  assert.match(boss, /<a class="source-card__site" href="https:\/\/www\.zhipin\.com\/" target="_blank" rel="noopener noreferrer"/);
+  assert.match(boss, /官网 ↗/);
+  for (const src of FIXTURE_SOURCES) {
+    const html = Sources.renderSourceCard(src);
+    assert.match(html, /class="source-card__site"/, `${src.key} 卡应含官网链接`);
+  }
+});
+
+test("renderSourceCard 无 home 字段时不渲染官网链接；home 注入被转义", () => {
+  const noHome = Sources.renderSourceCard({ key: "x", name: "X", kind: "public", status: { source: "public", masked: "" } });
+  assert.doesNotMatch(noHome, /source-card__site/);
+  const evil = Sources.renderSourceCard({
+    key: "x", name: "X", kind: "public",
+    home: '" onmouseover="alert(1)',
+    status: { source: "public", masked: "" },
+  });
+  assert.doesNotMatch(evil, /" onmouseover=/, "未转义引号不得逃出 href 属性");
+  assert.match(evil, /&quot;/, "注入的引号应被转义为实体");
 });

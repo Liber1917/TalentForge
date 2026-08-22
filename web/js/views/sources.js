@@ -116,6 +116,10 @@ const TalentForgeSources = (() => {
     const status = (source.status && source.status.source) || "none";
     const stateLabel = SOURCE_LABEL[status] || status;
     const kindTag = kindLabel ? `<span class="source-card__kind">${esc(kindLabel)}</span>` : "";
+    const home = String(source.home || "").trim();
+    const homeLink = home
+      ? `<a class="source-card__site" href="${esc(home)}" target="_blank" rel="noopener noreferrer" aria-label="打开 ${name} 官网">官网 ↗</a>`
+      : "";
     const expand = kindKey === "cookie" ? renderCookieExpand(source) : "";
     return `
         <article class="card source-card" data-source-key="${key}" role="listitem">
@@ -123,6 +127,7 @@ const TalentForgeSources = (() => {
             <h3 class="source-card__name">${name}</h3>
             ${kindTag}
             <span class="${pillClassForSource(status)}">${esc(stateLabel)}</span>
+            ${homeLink}
           </header>
           ${renderMaskedLine(source)}
           ${source.note && kindKey !== "cookie" ? `<p class="source-card__note source-card__note--plain">${esc(source.note)}</p>` : ""}
