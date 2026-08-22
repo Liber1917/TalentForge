@@ -104,3 +104,46 @@ sqlite3 data/talentforge.db "SELECT event_id, event_type, url, source_platform, 
 ### 真实验收步骤
 
 详见 `docs/research/m2b-acceptance.md`：后端契约 curl 验收（§1）、插件↔后端浏览器端到端（§2，pending-user）、画像自长链路（§3）。
+
+---
+
+## M3 Web 界面（对话 / 工作台 / 画像）
+
+FastAPI 统一承载 API + 静态 Web，三视图 SPA（纯 vanilla JS + hash 路由）：`#/chat` 对话首页 / `#/jobs` 决策工作台 / `#/profile` 画像面板。
+
+### 启动
+
+```bash
+python -m uvicorn talentforge.api.app:create_app --factory --port 8420
+```
+
+浏览器打开 http://127.0.0.1:8420/ 。静态资源与 API 同一端口（/api/events 插件采集端点保留，与 M2b 共存）。
+
+### 数据源切换
+
+- **默认离线 fixtures**：开箱即用，三视图用本地镜像假数据渲染（5 轮对话 + 4 类卡片、8 岗位三态、画像四 tab），无需 LLM / 无需数据库。
+- **真后端联调**：URL 加 `?real=1`（或 localStorage 置 `tf_real=1`）→ 命中 FastAPI 真端点（真实 LLM、读写 SQLite 与画像文件）。
+
+### 三视图
+
+| 视图 | 路由 | 做什么 |
+|---|---|---|
+| 对话首页 | `#/chat` | 陪伴入口：聊天 + 内嵌卡片（DecisionCard / ClaimCard / RiskNote / ReflectivePrompt）。发"帮我看看深圳后端岗"触发决策；聊自己沉淀 trial 主张；反思回答写回画像 |
+| 决策工作台 | `#/jobs` | 工具面：岗位三态列表（VerdictBadge）+ 筛选（搜索/城市/verdict）+ 详情面板（理由链/风险/gap 补短板）+ 生成报告（异步跑 M2a 管线） |
+| 画像面板 | `#/profile` | 读/校对面：待定池主张确认/驳回 + 叙事/效用/结构位置三轨 + 八格网格 + 简历校对 + 导出 JSON |
+
+Primitive Showcase（设计原语三断点验证）：http://127.0.0.1:8420/showcase.html
+
+### 测试
+
+```bash
+# Python 后端（app 工厂 / fixtures / 真实路由 / 全量组件）
+.venv/bin/pytest
+
+# Web 前端渲染断言（node:test + vm，无第三方依赖）
+node --test web/tests/chat.test.mjs web/tests/jobs.test.mjs web/tests/profile.test.mjs
+```
+
+### 真实验收步骤
+
+详见 `docs/research/m3-acceptance.md`：离线假数据演示（§1）、真后端联调数据流（§2）、验证证据（§3）、限制与 pending-user 清单（§4）。
