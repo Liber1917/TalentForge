@@ -7,6 +7,7 @@ from typing import Any
 
 import click
 
+from talentforge.api.app import create_app
 from talentforge.api.events import handle_events
 from talentforge.competency.builder import DefaultCompetencyModelBuilder
 from talentforge.decision.verdict import decide
@@ -49,6 +50,17 @@ def decide_command(market_fit: str, growth_fit: str, risk: tuple[str, ...], deal
     )
     verdict = decide(match, list(deal_breaker))
     click.echo(f"verdict={verdict.value}")
+
+
+@main.command("serve-api")
+@click.option("--host", type=str, default="127.0.0.1", show_default=True, help="监听地址")
+@click.option("--port", type=int, default=8420, show_default=True, help="监听端口")
+def serve_api(host: str, port: int) -> None:
+    """启动 FastAPI 服务（/api/health、/api/events、静态 web/），替代原 stdlib server。"""
+    import uvicorn
+
+    app = create_app()
+    uvicorn.run(app, host=host, port=port)
 
 
 async def _run_profile_build(explicit: dict[str, Any]) -> Profile:
