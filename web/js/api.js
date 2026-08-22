@@ -8,9 +8,14 @@
 "use strict";
 
 const TalentForgeApi = (() => {
-  /* 开发期开关：true → 请求 /api/fixtures 假数据（Task 7 后端挂载）；
-     接真后端时改为 false，base 切回 /api。 */
-  const USE_FIXTURES = true;
+  /* 数据源开关（运行时切换）：
+     - 默认 fixtures 假数据（离线开箱即用，三视图本地镜像数据）
+     - 真后端联调：URL 加 ?real=1 或 localStorage 设 tf_real=1（base 切 /api）
+     优先级：URL 参数 > localStorage > 默认。 */
+  const _wantReal =
+    new URLSearchParams(window.location.search).get("real") === "1" ||
+    window.localStorage.getItem("tf_real") === "1";
+  const USE_FIXTURES = !_wantReal;
   const BASE = USE_FIXTURES ? "/api/fixtures" : "/api";
   const TIMEOUT_MS = 10000;
 
