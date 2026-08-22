@@ -78,6 +78,9 @@ def test_get_sources_lists_four_entries(monkeypatch: Any, tmp_path: Path) -> Non
     assert by_key["bilibili"]["home"] == "https://www.bilibili.com/"
     assert by_key["zhihu"]["home"] == "https://www.zhihu.com/"
     assert by_key["github"]["home"] == "https://github.com/"
+    assert by_key["boss"]["nav"] == "self"
+    assert by_key["bilibili"]["nav"] == "blank"
+    assert by_key["github"]["nav"] == "blank"
 
 
 def test_save_credential_then_get_reflects_saved_without_leak(

@@ -116,9 +116,14 @@ const TalentForgeSources = (() => {
     const status = (source.status && source.status.source) || "none";
     const stateLabel = SOURCE_LABEL[status] || status;
     const kindTag = kindLabel ? `<span class="source-card__kind">${esc(kindLabel)}</span>` : "";
-    const home = String(source.home || "").trim();
-    const homeLink = home
-      ? `<a class="source-card__site" href="${esc(home)}" target="_blank" rel="noopener noreferrer" aria-label="打开 ${name} 官网">官网 ↗</a>`
+    /* 风控强的站（nav=self，如 Boss）在当前 tab 内经 goto.html 跳转：本 tab 有浏览历史，
+       站点反爬的 window.close() 会被浏览器拒绝；target=_blank 弹出的 tab 永远可被关（实测）。 */
+    const sameTab = String(source.nav || "blank") === "self";
+    const attrs = sameTab
+      ? `aria-label="在当前页打开 ${name} 官网（按浏览器返回键回来）"`
+      : `target="_blank" rel="noopener noreferrer" aria-label="打开 ${name} 官网"`;
+    const homeLink = key
+      ? `<a class="source-card__site" href="goto.html?key=${key}" ${attrs}>官网 ↗</a>`
       : "";
     const expand = kindKey === "cookie" ? renderCookieExpand(source) : "";
     return `
@@ -202,7 +207,10 @@ const TalentForgeSources = (() => {
   async function loadSources() {
     state.loaded = true;
     try {
-      const res = await fetch("/api/sources", { headers: { Accept: "application/json" } });
+      const res = await fetch("/api/sources", {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       state.sources = Array.isArray(data && data.sources) ? data.sources : [];
@@ -241,6 +249,7 @@ const TalentForgeSources = (() => {
   async function requestJson(url, options) {
     const res = await fetch(url, {
       headers: { Accept: "application/json", "Content-Type": "application/json" },
+      cache: "no-store",
       ...options,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

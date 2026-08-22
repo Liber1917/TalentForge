@@ -22,6 +22,7 @@ const FIXTURE_SOURCES = [
     name: "Boss 直聘",
     kind: "cookie",
     home: "https://www.zhipin.com/",
+    nav: "self",
     status: { source: "saved", masked: "wt2=****9876" },
     note: "粘贴浏览器复制的 cookie 串；留空保存不覆盖现有值；env TALENTFORGE_BOSS_COOKIE 优先于页面保存",
   },
@@ -30,6 +31,7 @@ const FIXTURE_SOURCES = [
     name: "B站",
     kind: "extension",
     home: "https://www.bilibili.com/",
+    nav: "blank",
     status: { source: "extension", masked: "" },
     note: "由浏览器插件登录态采集，无需配置 cookie",
   },
@@ -38,6 +40,7 @@ const FIXTURE_SOURCES = [
     name: "知乎",
     kind: "extension",
     home: "https://www.zhihu.com/",
+    nav: "blank",
     status: { source: "extension", masked: "" },
     note: "由浏览器插件登录态采集，无需配置 cookie",
   },
@@ -46,6 +49,7 @@ const FIXTURE_SOURCES = [
     name: "GitHub",
     kind: "public",
     home: "https://github.com/",
+    nav: "blank",
     status: { source: "public", masked: "" },
     note: "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",
   },
@@ -201,24 +205,24 @@ test("partials/sources.html 与 FALLBACK_PARTIAL 含头部 + 列表容器骨架"
 
 /* ---------- 官网外链 ---------- */
 
-test("renderSourceCard 卡面含平台官网外链（新窗口 + noopener）", () => {
-  const boss = Sources.renderSourceCard(FIXTURE_SOURCES[0]);
-  assert.match(boss, /<a class="source-card__site" href="https:\/\/www\.zhipin\.com\/" target="_blank" rel="noopener noreferrer"/);
-  assert.match(boss, /官网 ↗/);
+test("renderSourceCard 官网链接经 goto.html 中转；boss 同 tab（防反爬关闭），其余新 tab", () => {
+  const byKey = {};
   for (const src of FIXTURE_SOURCES) {
-    const html = Sources.renderSourceCard(src);
-    assert.match(html, /class="source-card__site"/, `${src.key} 卡应含官网链接`);
+    byKey[src.key] = Sources.renderSourceCard(src);
   }
+  assert.match(byKey.boss, /<a class="source-card__site" href="goto\.html\?key=boss" aria-label="在当前页打开 Boss 直聘 官网/);
+  assert.doesNotMatch(byKey.boss, /target="_blank"/, "boss 不得弹新 tab（弹窗 tab 可被站点 window.close 关闭）");
+  assert.match(byKey.bilibili, /goto\.html\?key=bilibili" target="_blank" rel="noopener noreferrer"/);
+  assert.match(byKey.github, /goto\.html\?key=github" target="_blank"/);
+  assert.match(byKey.boss, /官网 ↗/);
 });
 
-test("renderSourceCard 无 home 字段时不渲染官网链接；home 注入被转义", () => {
-  const noHome = Sources.renderSourceCard({ key: "x", name: "X", kind: "public", status: { source: "public", masked: "" } });
-  assert.doesNotMatch(noHome, /source-card__site/);
+test("renderSourceCard home 字段不进 href（注入无效）；未知 key 仍渲染中转链接", () => {
   const evil = Sources.renderSourceCard({
     key: "x", name: "X", kind: "public",
     home: '" onmouseover="alert(1)',
     status: { source: "public", masked: "" },
   });
-  assert.doesNotMatch(evil, /" onmouseover=/, "未转义引号不得逃出 href 属性");
-  assert.match(evil, /&quot;/, "注入的引号应被转义为实体");
+  assert.match(evil, /href="goto\.html\?key=x"/);
+  assert.doesNotMatch(evil, /" onmouseover=/, "home 注入不进 href");
 });

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>正在前往平台官网…</title>
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <style>
+    /* 中转页独立小样式：居中提示（不依赖视图 CSS） */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .goto-box { text-align: center; max-width: 420px; padding: 24px; }
+    .goto-box p { margin: 8px 0; }
+    .goto-box a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="goto-box">
+    <p id="goto-status">正在前往平台官网…</p>
+    <p id="goto-fallback" hidden>
+      没有自动跳转？<a id="goto-link" href="#/sources" rel="noopener">手动点这里</a>，或
+      <a href="/#/sources">返回平台源</a>。
+    </p>
+  </div>
+
+  <script>
+    /* 平台官网中转页：本页先成为 tab 的第一条历史记录，再用 location.href
+       前往目标站——目标 tab 因此带 ≥2 条历史，站点反爬的 window.close()
+       会被浏览器拒绝（Chrome/Edge/Firefox 的通用规则），tab 不再自动消失。
+       出于开放重定向安全考虑，只允许白名单 key，不接受任意 url 参数。 */
+    "use strict";
+
+    var PLATFORM_SITES = {
+      boss: { name: "Boss 直聘", url: "https://www.zhipin.com/" },
+      bilibili: { name: "B站", url: "https://www.bilibili.com/" },
+      zhihu: { name: "知乎", url: "https://www.zhihu.com/" },
+      github: { name: "GitHub", url: "https://github.com/" },
+    };
+
+    (function () {
+      var key = new URLSearchParams(window.location.search).get("key") || "";
+      var site = Object.prototype.hasOwnProperty.call(PLATFORM_SITES, key)
+        ? PLATFORM_SITES[key]
+        : null;
+      var status = document.getElementById("goto-status");
+      var fallback = document.getElementById("goto-fallback");
+      var link = document.getElementById("goto-link");
+
+      if (!site) {
+        status.textContent = "未知的平台标识：" + key;
+        if (fallback) fallback.hidden = false;
+        return;
+      }
+
+      status.textContent = "正在前往 " + site.name + "（" + site.url + "）…";
+      if (link) link.href = site.url;
+      if (fallback) fallback.hidden = false;
+
+      /* 用 location.href 赋值（非 replace）：保留本页历史条目，目标 tab 关不掉 */
+      window.location.href = site.url;
+    })();
+  </script>
+</body>
+</html>

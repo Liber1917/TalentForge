@@ -39,7 +39,8 @@ _SET_COOKIE_CLEARED_RE = re.compile(r"=\s*;|Expires=Thu, 01 Jan 1970")
 
 _SOURCE_NOTES = {
     "boss": "粘贴浏览器复制的 cookie 串；留空保存不覆盖现有值；"
-    "env TALENTFORGE_BOSS_COOKIE 优先于页面保存",
+    "env TALENTFORGE_BOSS_COOKIE 优先于页面保存。"
+    "Boss 为国内站点：若官网被弹回或打不开，多为代理/VPN 出口被风控——请对本站直连后重试",
     "bilibili": "由浏览器插件登录态采集，无需配置 cookie",
     "zhihu": "由浏览器插件登录态采集，无需配置 cookie",
     "github": "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",
@@ -56,6 +57,7 @@ def list_sources() -> dict:
                 "name": "Boss 直聘",
                 "kind": "cookie",
                 "home": "https://www.zhipin.com/",
+                "nav": "self",
                 "status": get_boss_cookie_summary(),
                 "note": _SOURCE_NOTES["boss"],
             },
@@ -64,6 +66,7 @@ def list_sources() -> dict:
                 "name": "B站",
                 "kind": "extension",
                 "home": "https://www.bilibili.com/",
+                "nav": "blank",
                 "status": {"source": "extension", "masked": ""},
                 "note": _SOURCE_NOTES["bilibili"],
             },
@@ -72,6 +75,7 @@ def list_sources() -> dict:
                 "name": "知乎",
                 "kind": "extension",
                 "home": "https://www.zhihu.com/",
+                "nav": "blank",
                 "status": {"source": "extension", "masked": ""},
                 "note": _SOURCE_NOTES["zhihu"],
             },
@@ -80,6 +84,7 @@ def list_sources() -> dict:
                 "name": "GitHub",
                 "kind": "public",
                 "home": "https://github.com/",
+                "nav": "blank",
                 "status": {"source": "public", "masked": ""},
                 "note": _SOURCE_NOTES["github"],
             },
