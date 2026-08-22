@@ -89,6 +89,8 @@ class OrdinalPreference(BaseModel):
 
     attribute: str  # salary | tech_stack | work_mode | growth | stability | location | company_type
     ordering: list[str] = Field(default_factory=list)  # 偏好从高到低
+    # 回流依据（M4），如 "2026-08-22 hold 星辰科技(25-50K·16薪)"
+    evidence: list[str] = Field(default_factory=list)
 
 
 class Profile(BaseModel):
