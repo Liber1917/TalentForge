@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TalentForge Primitive Showcase — 原语响应式验证页（375/768/1280）" />
+  <title>TalentForge · Primitive Showcase</title>
+
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body class="app-shell">
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="index.html" aria-label="返回主应用">TalentForge · Showcase</a>
+      <span class="topbar__badge" id="breakpoint-chip" data-breakpoint aria-live="polite">断点：—</span>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <h1>Primitive Showcase</h1>
+    <p>
+      设计系统原语验证页（DESIGN.md §4/§5 原语，§8 响应式门）。
+      拖动窗口过 375 / 768 / 1280 三断点，逐原语核对布局与触控目标。
+    </p>
+
+    <!-- 断点指示（JS 实时更新） -->
+    <div class="l-grid" style="margin-bottom: var(--space-5)">
+      <div class="card card--embedded">
+        <span class="overline">断点</span>
+        <p class="card__meta">当前布局：<strong id="breakpoint-detail">—</strong></p>
+      </div>
+    </div>
+
+    <!-- ============ Card ============ -->
+    <section class="showcase-section" aria-labelledby="h-card">
+      <h2 class="overline" id="h-card">Card · 卡片</h2>
+      <div class="l-grid">
+        <article class="card">
+          <h3 class="card__title">基础卡片</h3>
+          <p class="card__body">Ivory 底 + border-subtle 1px + 12px 圆角，内边距 24px。</p>
+        </article>
+
+        <article class="card card--embedded">
+          <h3 class="card__title">对话流内嵌版</h3>
+          <p class="card__body">embedded 窄边距（16px），用于"卡片即消息"的对话流。</p>
+        </article>
+
+        <article class="card card--clickable" tabindex="0">
+          <h3 class="card__title">可点卡片</h3>
+          <p class="card__body">hover / focus 抬升强调边 + 悬浮阴影。聚焦可见：Tab 到此卡试试。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ Btn ============ -->
+    <section class="showcase-section" aria-labelledby="h-btn">
+      <h2 class="overline" id="h-btn">Btn · 按钮</h2>
+      <div class="card" style="display: flex; flex-wrap: wrap; gap: var(--space-3)">
+        <button class="btn btn--primary" type="button">主要动作</button>
+        <button class="btn btn--secondary" type="button">次级动作</button>
+        <button class="btn btn--ghost" type="button">幽灵</button>
+        <button class="btn btn--danger" type="button">风险动作</button>
+        <button class="btn btn--primary btn--sm" type="button">小尺寸</button>
+        <button class="btn btn--primary" type="button" disabled>已禁用</button>
+      </div>
+    </section>
+
+    <!-- ============ VerdictBadge ============ -->
+    <section class="showcase-section" aria-labelledby="h-verdict">
+      <h2 class="overline" id="h-verdict">VerdictBadge · 三值判定徽章</h2>
+      <div class="l-grid" id="verdict-badges"></div>
+      <div class="card card--embedded" style="margin-top: var(--space-4)">
+        <span class="overline">语义</span>
+        <p class="card__meta">
+          投 = terracotta 实底（行动暖色）· 观望 = 琥珀描边（暂停思考）· 不投 = stone 描边（中性搁置，非失败）。
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ ClaimCard ============ -->
+    <section class="showcase-section" aria-labelledby="h-claim">
+      <h2 class="overline" id="h-claim">ClaimCard · 画像主张卡</h2>
+      <div class="l-grid">
+        <div id="claim-trial"></div>
+        <div id="claim-active"></div>
+      </div>
+    </section>
+
+    <!-- ============ EvidenceChain ============ -->
+    <section class="showcase-section" aria-labelledby="h-evidence">
+      <h2 class="overline" id="h-evidence">EvidenceChain · 证据链（时间线）</h2>
+      <div class="l-grid l-grid__span">
+        <div class="card">
+          <div id="evidence-chain"></div>
+          <p class="card__meta" style="margin-top: var(--space-3)">
+            点击锚点行触发 :target 高亮（ok 色 600ms 淡出）。证据类型 icon = 彩色圆点 + mono 字号来源。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RiskNote / ReflectivePrompt / 输入区 / ChatBubble ============ -->
+    <section class="showcase-section" aria-labelledby="h-combo">
+      <h2 class="overline" id="h-combo">组合原语 · 风险 / 反思 / 输入区 / 对话泡</h2>
+      <div class="l-grid">
+        <div id="risk-notes"></div>
+        <div class="reflective-prompt">
+          <p class="reflective-prompt__q">"你上次说 996 是硬边界，现在这份岗位明确标着 996——怎么权衡？"</p>
+          <div class="reflective-prompt__input">
+            <input class="input" type="text" placeholder="写下你的权衡…" aria-label="反思回答" />
+            <button class="btn btn--primary btn--sm" type="button">回答</button>
+          </div>
+        </div>
+        <div class="card card--embedded">
+          <span class="overline">输入区（Composer）</span>
+          <div class="composer" style="margin-top: var(--space-3)">
+            <input class="input" type="text" placeholder="想聊什么、想问什么、想投什么…" aria-label="对话输入框" />
+            <button class="btn btn--primary" type="button">发送</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-stream" style="margin-top: var(--space-5)">
+        <div class="chat-bubble chat-bubble--user">帮我看看深圳的后端岗位？最近在找机会。</div>
+        <div class="chat-bubble chat-bubble--assistant">给你看了两份深圳后端岗，先各给一个结论。</div>
+        <div class="chat-bubble chat-bubble--assistant chat-bubble--cards">
+          <div class="card card--embedded">
+            <h3 class="card__title">卡片即消息</h3>
+            <p class="card__body">assistant 含卡片时无气泡边框，卡片本身就是消息。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="statusbar" role="status" aria-live="polite">
+    <div class="statusbar__inner">
+      <span class="statusbar__item">Primitive Showcase · 断点门 375 / 768 / 1280</span>
+      <span class="statusbar__item statusbar__item--accent">证据驱动 · 知情决策</span>
+    </div>
+  </footer>
+
+  <script>
+    "use strict";
+
+    /* ---------- 内联最小 fixture 样例（契约同 spec-m3-web §1 / fixtures.py） ---------- */
+    const DEMO = {
+      jobs: [
+        {
+          title: "数据平台后端工程师",
+          company: "观澜数据",
+          salary: "30-45K·14薪",
+          verdict: "apply",
+          reason: "成长契合高（流计算方向补强），薪资覆盖保留工资，双休弹性工时。",
+          risk_hits: [],
+        },
+        {
+          title: "Python 后端工程师",
+          company: "星辰科技",
+          salary: "25-50K·16薪",
+          verdict: "hold",
+          reason: "市场契合高，但 JD 明确标注 996，与硬边界冲突——先观望对价能否谈拢。",
+          risk_hits: [{ key: "996", label: "996 工作制" }],
+        },
+        {
+          title: "高级后端开发（Java）",
+          company: "云帆信息",
+          salary: "15-25K",
+          verdict: "skip",
+          reason: "薪资低于保留工资，且含竞业限制条款，与硬边界直接冲突。",
+          risk_hits: [{ key: "竞业限制", label: "竞业限制条款" }],
+        },
+      ],
+      claims: [
+        {
+          claim_id: "claim-showcase-01",
+          text: "用户对分布式系统/系统设计有深度积累，正在系统化准备系统设计面试",
+          state: "trial",
+          evidence_count: 2,
+          confidence: 0.75,
+          sources: [
+            { kind: "dialogue", ref: "turn-3", at: "2026-08-21T09:03:00+00:00" },
+            { kind: "dialogue", ref: "turn-5", at: "2026-08-21T09:05:00+00:00" },
+          ],
+        },
+        {
+          claim_id: "claim-showcase-02",
+          text: "用户把 996 视为硬边界，除非给足对价与时间弹性否则不投",
+          state: "active",
+          evidence_count: 3,
+          confidence: 0.9,
+          sources: [
+            { kind: "dialogue", ref: "demo-chat-confirm", at: "2026-08-21T09:04:00+00:00" },
+          ],
+        },
+      ],
+      evidence: [
+        { kind: "jd", ref: "python_1001.html", text: "工作时间为 996 工作制" },
+        { kind: "dialogue", ref: "turn-1", text: "用户偏好深圳后端岗" },
+        { kind: "system", ref: "deal-breaker", text: "用户 deal_breakers 含竞业限制" },
+      ],
+    };
+
+    const KIND_LABEL = { jd: "JD 原文", dialogue: "对话", system: "系统" };
+    const VERDICT_LABEL = { apply: "投", hold: "观望", skip: "不投" };
+    const STATE_LABEL = { trial: "待验证", active: "已确认", archived: "已归档" };
+
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
+      ));
+    }
+
+    function renderVerdictBadges() {
+      const host = document.getElementById("verdict-badges");
+      host.innerHTML = DEMO.jobs
+        .map((job) => `
+          <article class="card">
+            <span class="verdict-badge verdict-badge--${job.verdict}">${VERDICT_LABEL[job.verdict]}</span>
+            <h3 class="card__title" style="margin-top: var(--space-3)">${esc(job.title)}</h3>
+            <p class="card__meta">${esc(job.company)} · ${esc(job.salary)}</p>
+            <p class="card__body">${esc(job.reason)}</p>
+          </article>`)
+        .join("");
+    }
+
+    function renderEvidenceChain(hostId, items) {
+      const host = document.getElementById(hostId);
+      host.innerHTML = `
+        <details class="evidence-chain" open>
+          <summary class="evidence-chain__summary">证据链 · ${items.length} 条（点击锚点行看高亮）</summary>
+          <ol class="evidence-chain__list">
+            ${items.map((ev, i) => `
+              <li class="evidence-item" id="ev-${i}">
+                <a class="evidence-item__anchor" href="#ev-${i}">
+                  <span class="evidence-item__kind">${KIND_LABEL[ev.kind] || esc(ev.kind)}</span>
+                  <span class="evidence-item__ref">${esc(ev.ref)}</span>
+                  <span class="evidence-item__at">${esc(ev.text)}</span>
+                </a>
+              </li>`).join("")}
+          </ol>
+        </details>`;
+    }
+
+    function renderClaimCard(hostId, claim) {
+      const host = document.getElementById(hostId);
+      host.innerHTML = `
+        <article class="card claim-card">
+          <header class="claim-card__head">
+            <span class="status-pill status-pill--${claim.state}">${STATE_LABEL[claim.state]}</span>
+            <span class="claim-card__meta">置信 ${Math.round(claim.confidence * 100)}% · 证据 ${claim.evidence_count}</span>
+          </header>
+          <p class="claim-card__text">${esc(claim.text)}</p>
+          <details class="evidence-chain">
+            <summary class="evidence-chain__summary">证据链 · ${claim.sources.length} 条</summary>
+            <ol class="evidence-chain__list">
+              ${claim.sources.map((src) => `
+                <li class="evidence-item">
+                  <span class="evidence-item__anchor">
+                    <span class="evidence-item__kind">${KIND_LABEL[src.kind] || esc(src.kind)}</span>
+                    <span class="evidence-item__ref">${esc(src.ref)}</span>
+                    <span class="evidence-item__at">${esc(src.at)}</span>
+                  </span>
+                </li>`).join("")}
+            </ol>
+          </details>
+          <footer class="claim-card__actions">
+            <button class="btn btn--primary btn--sm" type="button">确认</button>
+            <button class="btn btn--ghost btn--sm" type="button">驳回</button>
+            <button class="btn btn--ghost btn--sm" type="button">聊聊</button>
+          </footer>
+        </article>`;
+    }
+
+    function renderRiskNotes() {
+      const host = document.getElementById("risk-notes");
+      host.innerHTML = DEMO.jobs
+        .filter((job) => job.risk_hits.length)
+        .map((job) => job.risk_hits
+          .map((hit) => `
+            <aside class="risk-note" style="margin-bottom: var(--space-3)">
+              <div class="risk-note__label">风险 · ${esc(hit.label)}</div>
+              <details>
+                <summary class="risk-note__summary">为什么是风险</summary>
+                <p class="risk-note__why">
+                  ${esc(hit.key)}意味着劳动时间被系统性延长——这不是道德判断，是需要你知情权衡的事实。
+                </p>
+              </details>
+            </aside>`)
+          .join(""))
+        .join("");
+    }
+
+    /* ---------- 断点指示（375 / 768 / 1280） ---------- */
+    const BREAKPOINTS = [
+      { label: "移动 · 375", note: "单列，触控按钮整行，卡片内边距收窄", mq: "(max-width: 639px)" },
+      { label: "平板 · 768", note: "单列/双列过渡，阅读列宽不变", mq: "(min-width: 640px) and (max-width: 1024px)" },
+      { label: "桌面 · 1280", note: "工作台双栏（2fr/3fr），栅格三列", mq: "(min-width: 1025px)" },
+    ];
+
+    function updateBreakpoint() {
+      const chip = document.getElementById("breakpoint-chip");
+      const detail = document.getElementById("breakpoint-detail");
+      const hit = BREAKPOINTS.find((b) => window.matchMedia(b.mq).matches) || BREAKPOINTS[0];
+      chip.textContent = `断点：${hit.label}`;
+      detail.textContent = `${hit.label} — ${hit.note}`;
+    }
+
+    function init() {
+      renderVerdictBadges();
+      renderEvidenceChain("evidence-chain", DEMO.evidence);
+      renderClaimCard("claim-trial", DEMO.claims[0]);
+      renderClaimCard("claim-active", DEMO.claims[1]);
+      renderRiskNotes();
+
+      updateBreakpoint();
+      BREAKPOINTS.forEach((b) => window.matchMedia(b.mq).addEventListener("change", updateBreakpoint));
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TalentForge — 一间安静的书房，坐着一位懂你的求职顾问" />
+  <title>TalentForge · 求职顾问</title>
+
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <script src="js/router.js" defer></script>
+  <script src="js/api.js" defer></script>
+</head>
+<body class="app-shell">
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="#/chat" aria-label="TalentForge 首页">TalentForge</a>
+
+      <nav class="nav" aria-label="主导航">
+        <a class="nav__tab" href="#/chat">对话</a>
+        <a class="nav__tab" href="#/jobs">工作台</a>
+        <a class="nav__tab" href="#/profile">画像</a>
+      </nav>
+
+      <span class="topbar__badge" id="pending-count" aria-label="待定池主张数量">待定池 0</span>
+    </div>
+  </header>
+
+  <main class="app-main" id="main">
+    <!-- 对话首页（Task 4 填入聊天流） -->
+    <section class="view" id="chat" data-view="chat" aria-label="对话首页">
+      <div class="view__placeholder">
+        <p class="view__placeholder-title">对话</p>
+        <p class="view__placeholder-hint">聊天流与卡片渲染将在下一步接入（Task 4）</p>
+      </div>
+    </section>
+
+    <!-- 决策工作台（Task 5 填入列表-详情） -->
+    <section class="view" id="jobs" data-view="jobs" aria-label="决策工作台" hidden>
+      <div class="view__placeholder">
+        <p class="view__placeholder-title">工作台</p>
+        <p class="view__placeholder-hint">岗位列表与详情面板将在下一步接入（Task 5）</p>
+      </div>
+    </section>
+
+    <!-- 画像面板（Task 6 填入三轨+待定池+八格） -->
+    <section class="view" id="profile" data-view="profile" aria-label="画像面板" hidden>
+      <div class="view__placeholder">
+        <p class="view__placeholder-title">画像</p>
+        <p class="view__placeholder-hint">画像三轨与待定池将在下一步接入（Task 6）</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="statusbar" role="status" aria-live="polite">
+    <div class="statusbar__inner">
+      <span id="status-data" class="statusbar__item">数据源：假数据（fixtures）</span>
+      <span id="status-view" class="statusbar__item">当前视图：对话</span>
+      <span class="statusbar__item statusbar__item--accent">证据驱动 · 知情决策</span>
+    </div>
+  </footer>
+
+  <noscript>
+      <p style="padding: 16px; text-align: center; color: var(--text-secondary);">
+      本应用需要启用 JavaScript 才能使用。
+    </p>
+  </noscript>
+</body>
+</html>

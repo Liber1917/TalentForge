@@ -1,0 +1,78 @@
+/* =========================================================
+   TalentForge 基础层：reset + 排版基元
+   来源：DESIGN.md §3 排版 / §7 无障碍
+   ========================================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  background-color: var(--surface-primary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 标题：衬线出版物质感，weight 只到 500（DESIGN.md §3） */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+  line-height: 1.3;
+}
+h1 { font-size: var(--fs-page-title); line-height: var(--lh-page-title); }
+h2 { font-size: var(--fs-card-title); line-height: var(--lh-card-title); }
+h3 { font-size: var(--fs-body); }
+
+p { margin: 0 0 var(--space-3); }
+p:last-child { margin-bottom: 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+a:hover { text-decoration: underline; }
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+button { background: none; border: none; }
+
+/* 焦点可见性：focus ring 用 ok 绿（DESIGN.md §7） */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+::selection { background-color: var(--accent-soft); }
+
+[hidden] { display: none !important; }
+
+details summary { cursor: pointer; }
+
+img, svg { display: block; max-width: 100%; }
+
+/* 等宽（证据/ID）：event_id、BV 号、日期戳 */
+.mono { font-family: var(--font-mono); }
+
+/* 尊重系统减弱动效：直接跳终态（DESIGN.md §6） */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

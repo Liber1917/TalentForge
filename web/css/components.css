@@ -1,0 +1,504 @@
+/* =========================================================
+   TalentForge 组件层：DESIGN.md §4 原语实现
+   覆盖：Shell（顶栏/导航/状态条）、Card、Btn、Input/Composer、
+   VerdictBadge、ClaimCard、EvidenceChain、RiskNote、
+   ReflectivePrompt、ChatBubble、响应式工具。
+   响应式断点（DESIGN.md §8，验证页 375/768/1280）：
+     · 移动 <640px（375 档）
+     · 平板 640–1024px（768 档）
+     · 桌面 >1024px（1280 档）
+   ========================================================= */
+
+/* ===================== Shell ===================== */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--surface-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.topbar__inner {
+  max-width: var(--container-max);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-card-title);
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand:hover { text-decoration: none; }
+
+.nav {
+  display: flex;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+}
+
+.nav__tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  font-size: var(--fs-body-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.nav__tab:hover { color: var(--text-primary); background-color: var(--surface-sand); text-decoration: none; }
+.nav__tab.is-active,
+.nav__tab[aria-current="page"] {
+  color: var(--accent);
+  background-color: var(--accent-soft);
+}
+
+.topbar__badge {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  white-space: nowrap;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+/* 视图占位（Task 4-6 填入真实内容） */
+.view__placeholder {
+  text-align: center;
+  padding: var(--space-9) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-large);
+}
+.view__placeholder-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-card-title);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+.view__placeholder-hint {
+  font-size: var(--fs-body-sm);
+  color: var(--text-tertiary);
+}
+
+.statusbar {
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--surface-secondary);
+}
+.statusbar__inner {
+  max-width: var(--container-max);
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+}
+.statusbar__item--accent { color: var(--accent); }
+
+/* ===================== Card（DESIGN.md §5） ===================== */
+
+.card {
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+}
+/* 对话流内嵌版：窄边距（卡片即消息） */
+.card--embedded { padding: var(--space-4); }
+/* 可点卡片：hover 抬升强调边 + 悬浮阴影 */
+.card--clickable {
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.card--clickable:hover,
+.card--clickable:focus-visible { border-color: var(--border-strong); box-shadow: var(--shadow-elevated); }
+.card--clickable.is-active { border-color: var(--accent); }
+
+.card__title { margin-bottom: var(--space-2); }
+.card__meta {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--text-tertiary);
+}
+.card__body { margin-top: var(--space-3); }
+
+/* 章节小标题：overline 标签（DESIGN.md §3） */
+.overline {
+  font-size: var(--fs-overline);
+  font-weight: var(--fw-overline);
+  line-height: var(--lh-overline);
+  letter-spacing: var(--ls-overline);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ===================== Btn（DESIGN.md §5） ===================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-min);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-sm);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              opacity var(--dur-fast) var(--ease-out);
+}
+
+.btn--primary { background-color: var(--accent); color: var(--accent-contrast); }
+.btn--primary:hover { background-color: var(--accent-hover); }
+.btn--primary:active { background-color: var(--accent-active); }
+
+.btn--secondary { background-color: var(--surface-sand); color: var(--text-primary); }
+.btn--secondary:hover { background-color: var(--border-strong); }
+
+.btn--ghost { background-color: transparent; border-color: var(--border-strong); color: var(--text-secondary); }
+.btn--ghost:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+
+.btn--danger { background-color: var(--risk); color: var(--accent-contrast); }
+.btn--danger:hover { background-color: color-mix(in srgb, var(--risk) 88%, var(--text-primary)); }
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--sm {
+  min-height: var(--control-min);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--fs-caption);
+}
+
+/* ===================== Input / 输入区 ===================== */
+
+.input {
+  min-height: var(--control-min);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background-color: var(--surface-sand);
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+}
+.input::placeholder { color: var(--text-tertiary); }
+.input:focus-visible { border-color: var(--ok); }
+
+.composer {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+.composer .input { flex: 1; min-width: 0; }
+
+/* ===================== VerdictBadge（DESIGN.md §2 三值语义） ===================== */
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-6);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-serif);
+  font-size: var(--fs-verdict);
+  font-weight: var(--fw-verdict);
+  line-height: var(--lh-verdict);
+  white-space: nowrap;
+}
+/* 投 = terracotta 实底白字（行动暖色） */
+.verdict-badge--apply { background-color: var(--accent); color: var(--accent-contrast); }
+/* 观望 = 琥珀描边（暂停思考） */
+.verdict-badge--hold { color: var(--hold); border: 1px solid var(--hold); background-color: var(--hold-bg); }
+/* 不投 = stone 描边（中性搁置，不用红绿） */
+.verdict-badge--skip { color: var(--skip); border: 1px solid var(--skip); background-color: var(--skip-bg); }
+
+/* ===================== StatusPill（ClaimCard 状态徽章） ===================== */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-5);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* 待验证 trial：琥珀 */
+.status-pill--trial { color: var(--hold); border: 1px solid var(--hold); background-color: var(--hold-bg); }
+/* 已确认 active：muted 绿（DESIGN §2：确认/转正用 ok） */
+.status-pill--active { color: var(--ok); border: 1px solid var(--ok); background-color: var(--ok-bg); }
+/* 已归档 archived：中性灰 */
+.status-pill--archived { color: var(--text-tertiary); border: 1px solid var(--border-strong); background-color: var(--surface-sand); }
+
+/* ===================== ClaimCard（画像主张卡） ===================== */
+
+.claim-card__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.claim-card__meta {
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  margin-inline-start: auto;
+}
+.claim-card__text {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.claim-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* ===================== EvidenceChain（时间线证据链） ===================== */
+
+.evidence-chain {
+  margin-top: var(--space-4);
+  border-inline-start: 2px solid var(--border-strong);
+  padding-inline-start: var(--space-4);
+}
+
+.evidence-chain__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-5);
+  list-style: none;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.evidence-chain__summary::-webkit-details-marker { display: none; }
+
+.evidence-chain__list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.evidence-item {
+  position: relative;
+  padding: var(--space-2) 0 var(--space-2) var(--space-2);
+}
+/* 时间线圆点（锚定在左竖线上） */
+.evidence-item::before {
+  content: "";
+  position: absolute;
+  left: -21px;
+  top: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--border-strong);
+}
+
+.evidence-item__anchor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  line-height: var(--lh-mono);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.evidence-item__anchor:hover { color: var(--text-primary); text-decoration: none; }
+
+/* 证据类型（icon 位置）：JD / 对话 / 系统 */
+.evidence-item__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ok);
+  font-weight: 500;
+}
+.evidence-item__kind::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--ok);
+}
+.evidence-item__ref { color: inherit; }
+.evidence-item__at { color: var(--text-tertiary); }
+
+/* 锚点行命中高亮：ok 色 600ms 淡出（DESIGN.md §6） */
+@keyframes ev-flash {
+  from { background-color: color-mix(in srgb, var(--ok) 30%, transparent); }
+  to { background-color: transparent; }
+}
+.evidence-item:target { animation: ev-flash var(--dur-flash) var(--ease-out); }
+
+/* ===================== RiskNote（风险卡：知情非恐吓） ===================== */
+
+.risk-note {
+  background-color: var(--risk-bg);
+  border-inline-start: 3px solid var(--risk);
+  border-radius: var(--radius-inner);
+  padding: var(--space-4);
+}
+.risk-note__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-body-sm);
+  font-weight: 500;
+  color: var(--risk);
+}
+.risk-note__why {
+  margin-top: var(--space-2);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+}
+.risk-note__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  list-style: none;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.risk-note__summary::-webkit-details-marker { display: none; }
+/* 风险是知情信息，不提供"忽略"——只展开 why */
+
+/* ===================== ReflectivePrompt（反思问题块） ===================== */
+
+.reflective-prompt {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-secondary);
+  padding: var(--space-5);
+}
+.reflective-prompt__q {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--fs-card-title);
+  line-height: 1.4;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}
+.reflective-prompt__input {
+  display: flex;
+  gap: var(--space-3);
+}
+.reflective-prompt__input .input { flex: 1; min-width: 0; }
+
+/* ===================== ChatBubble（对话流） ===================== */
+
+.chat-stream {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--container-reading);
+  margin-inline: auto;
+}
+.chat-bubble {
+  max-width: 85%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+/* user：右对齐 sand 底 */
+.chat-bubble--user {
+  align-self: flex-end;
+  background-color: var(--surface-sand);
+  border-bottom-right-radius: var(--radius-inner);
+}
+/* assistant：左对齐 ivory 卡 */
+.chat-bubble--assistant {
+  align-self: flex-start;
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+}
+/* assistant 含卡片时无气泡边框（卡片即消息，DESIGN.md §5） */
+.chat-bubble--assistant.chat-bubble--cards {
+  align-self: stretch;
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-width: none;
+}
+
+/* ===================== 响应式工具（DESIGN.md §4/§8） ===================== */
+
+/* 通用栅格：375 单列 → 768 双列 → 1280 三列 */
+.l-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+@media (min-width: 640px) { /* 平板 768 档 */
+  .l-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1025px) { /* 桌面 1280 档 */
+  .l-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.l-grid__span { grid-column: 1 / -1; }
+
+/* 双栏分屏（工作台列表 2fr + 详情 3fr）：<1024 折叠单列 */
+.l-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (min-width: 1025px) { /* 桌面 1280 档 */
+  .l-split { grid-template-columns: 2fr 3fr; }
+}
+
+/* ---------- 移动 375 档（<640px）：压缩卡片内边距、触控按钮整行 ---------- */
+@media (max-width: 639px) {
+  .card { padding: var(--space-4); }
+  .topbar__inner { flex-wrap: wrap; }
+  .brand { font-size: var(--fs-body); }
+  .nav { margin-inline-start: auto; width: 100%; }
+  .nav__tab { flex: 1; justify-content: center; padding-inline: var(--space-2); }
+  .chat-bubble { max-width: 92%; }
+  .claim-card__actions .btn { flex: 1; }
+  .reflective-prompt__q { font-size: var(--fs-body); }
+}

@@ -1,0 +1,121 @@
+/* =========================================================
+   TalentForge 设计系统 · Design Tokens
+   来源：web/DESIGN.md §2 色彩 / §3 排版 / §4 间距·圆角 / §6 动效 / §7 无障碍
+   规则：本文件是颜色唯一来源——所有样式文件一律 var() 引用，禁止裸 hex。
+   ========================================================= */
+
+:root {
+  /* ---------- 色彩 · Light（白天书房，DESIGN.md §2） ---------- */
+
+  /* Surface 层级 */
+  --surface-primary: #f5f4ed;    /* Parchment 页面背景 */
+  --surface-secondary: #faf9f5;  /* Ivory 卡片、面板 */
+  --surface-elevated: #ffffff;   /* 弹层、悬浮卡 */
+  --surface-sand: #e8e6dc;       /* 次级按钮、输入框底 */
+
+  /* 文字灰阶 */
+  --text-primary: #141413;       /* 标题、正文 */
+  --text-secondary: #5e5d59;     /* Olive Gray 次级文字 */
+  --text-tertiary: #87867f;      /* 元数据、脚注 */
+
+  /* Accent（terracotta 只在关键时刻出现：投递决策/确认） */
+  --accent: #c96442;             /* Terracotta 主 CTA / verdict=投 */
+  --accent-soft: #f0e0d8;        /* accent 背景 tint（导航高亮、选中） */
+  --accent-contrast: var(--surface-secondary); /* accent 实底上的文字 = ivory，AA 4.6:1 */
+
+  /* 边框 */
+  --border-subtle: #f0eee6;      /* 卡片边 */
+  --border-strong: #e8e6dc;      /* 分隔、强调边 */
+
+  /* 语义色（三值 verdict 核心决策） */
+  --hold: #a88242;               /* 琥珀 · verdict=观望（暂停思考） */
+  --skip: #87867f;               /* Stone · verdict=不投（中性搁置，不用红色） */
+  --risk: #b53333;               /* 暖红（非亮红）· 风险警示 */
+  --risk-bg: #f7e8e4;            /* 风险卡背景 tint */
+  --ok: #6b8f71;                 /* muted 绿 · 确认/转正、证据链锚点、焦点环 */
+
+  /* ---------- 派生色（统一走 color-mix，保持"无裸色值"） ---------- */
+  --accent-hover: color-mix(in srgb, var(--accent) 88%, var(--text-primary));
+  --accent-active: color-mix(in srgb, var(--accent) 78%, var(--text-primary));
+  --hold-bg: color-mix(in srgb, var(--hold) 14%, var(--surface-secondary));
+  --skip-bg: color-mix(in srgb, var(--skip) 14%, var(--surface-secondary));
+  --ok-bg: color-mix(in srgb, var(--ok) 14%, var(--surface-secondary));
+  --shadow-color: color-mix(in srgb, var(--text-primary) 16%, transparent);
+  --shadow-elevated: 0 2px 8px var(--shadow-color), 0 12px 28px var(--shadow-color);
+
+  /* ---------- 字体（DESIGN.md §3，含中文回退栈） ---------- */
+  --font-serif: Georgia, "Songti SC", "Noto Serif SC", SimSun, serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Consolas, monospace;
+
+  /* ---------- 排版刻度（DESIGN.md §3） ---------- */
+  --fs-page-title: 28px;  --fw-page-title: 500;  --lh-page-title: 1.2;
+  --fs-card-title: 20px;  --fw-card-title: 500;  --lh-card-title: 1.3;
+  --fs-body: 16px;        --fw-body: 400;        --lh-body: 1.6;       /* 书房阅读节奏 */
+  --fs-body-sm: 14px;     --lh-body-sm: 1.5;
+  --fs-caption: 12px;     --lh-caption: 1.43;    --ls-caption: 0.12px;
+  --fs-verdict: 15px;     --fw-verdict: 500;     --lh-verdict: 1;
+  --fs-overline: 10px;    --fw-overline: 500;    --lh-overline: 1.6;   --ls-overline: 0.5px;
+  --fs-mono: 13px;        --lh-mono: 1.5;
+
+  /* ---------- 间距（Base 8 缩放：4/8/12/16/20/24/32/48/80，DESIGN.md §4） ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 80px;
+
+  /* ---------- 圆角（DESIGN.md §4） ---------- */
+  --radius-card: 12px;      /* 卡 */
+  --radius-control: 12px;   /* 按钮+输入 */
+  --radius-inner: 8px;      /* 内嵌元素、证据锚点 */
+  --radius-large: 16px;     /* 大容器 */
+  --radius-pill: 999px;     /* 标签 pill */
+
+  /* ---------- 布局（DESIGN.md §4） ---------- */
+  --container-max: 1200px;      /* 全站容器 */
+  --container-reading: 720px;   /* 对话页单列阅读列宽 */
+  --control-min: 44px;          /* 触控目标最小高度（DESIGN.md §7） */
+
+  /* ---------- 动效（DESIGN.md §6：只服务信息，不炫技） ---------- */
+  --dur-fast: 160ms;        /* 展开/收起、hover */
+  --dur-verdict: 240ms;     /* verdict 变化（确认转正的仪式感一瞬） */
+  --dur-flash: 600ms;       /* 证据锚点行 ok 色闪烁淡出 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---------- 焦点（DESIGN.md §7：focus ring 用 ok 绿，暖底上可见） ---------- */
+  --focus-ring: 2px solid var(--ok);
+
+  color-scheme: light dark;
+}
+
+/* ---------- 色彩 · Dark（夜间书房：暖炭色非冷黑，DESIGN.md §2 双列已定义） ---------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-primary: #141413;
+    --surface-secondary: #30302e;
+    --surface-elevated: #3d3d3a;
+    --surface-sand: #46453f;
+
+    --text-primary: #faf9f5;
+    --text-secondary: #b0aea5;
+    --text-tertiary: #87867f;
+
+    --accent: #d97757;           /* Coral */
+    --accent-soft: #3a2e28;
+    --accent-contrast: var(--surface-primary); /* 珊瑚底配深墨（页面底色），保持 AA */
+
+    --border-subtle: #30302e;
+    --border-strong: #46453f;
+
+    --hold: #c2a05e;
+    --skip: #87867f;
+    --risk: #d97757;
+    --risk-bg: #33241f;
+    --ok: #89a89b;
+  }
+}
