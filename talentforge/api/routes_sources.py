@@ -23,7 +23,6 @@ from talentforge.sources.cookies import (
     resolve_boss_raw,
     save_boss_cookie,
 )
-from talentforge.sources.qr_login import current_session, start_session
 
 router = APIRouter(tags=["sources"])
 
@@ -40,8 +39,7 @@ _VERIFY_UA = (
 _SET_COOKIE_CLEARED_RE = re.compile(r"=\s*;|Expires=Thu, 01 Jan 1970")
 
 _SOURCE_NOTES = {
-    "boss": "粘贴浏览器复制的 cookie 串；留空保存不覆盖现有值；"
-    "env TALENTFORGE_BOSS_COOKIE 优先于页面保存",
+    "boss": "由浏览器插件在你的真实登录态内采集（D25）：装插件后在 Boss 搜索页浏览即自动入库，无需配置 cookie",
     "bilibili": "由浏览器插件登录态采集，无需配置 cookie",
     "zhihu": "由浏览器插件登录态采集，无需配置 cookie",
     "github": "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",
@@ -56,10 +54,10 @@ def list_sources() -> dict:
             {
                 "key": "boss",
                 "name": "Boss 直聘",
-                "kind": "cookie",
+                "kind": "extension",
                 "home": "https://www.zhipin.com/",
                 "nav": "self",
-                "status": get_boss_cookie_summary(),
+                "status": {"source": "extension", "masked": ""},
                 "note": _SOURCE_NOTES["boss"],
             },
             {
@@ -147,37 +145,3 @@ async def verify_boss() -> dict:
     except httpx.HTTPError as exc:
         return {"ok": False, "detail": f"网络错误：{exc}"}
     return _judge_verify(resp)
-
-
-# ---------------- 扫码登录（M4：绕开 DevTools 反调试的 cookie 获取通道） ----------------
-
-
-@router.post("/api/sources/boss/qr-login/start")
-async def qr_login_start() -> dict:
-    """启动扫码登录会话：服务器开浏览器到登录页，二维码由 qr-image 端点轮询取。"""
-    session = await start_session()
-    return session.status()
-
-
-@router.get("/api/sources/boss/qr-login/status")
-def qr_login_status() -> dict:
-    """会话状态（starting/waiting/success/failed + error）。"""
-    session = current_session()
-    if session is None:
-        return {"state": "idle"}
-    status = session.status()
-    if status["state"] == "success":
-        status["cookie"] = get_boss_cookie_summary()
-    return status
-
-
-@router.get("/api/sources/boss/qr-login/qr-image")
-def qr_login_image() -> JSONResponse:
-    """当前二维码 PNG（base64 前端直显）；会话无图返回 404。"""
-    session = current_session()
-    if session is None or not session.qr_png_b64():
-        raise HTTPException(status_code=404, detail="无进行中的扫码会话")
-    return JSONResponse(
-        content={"png_base64": session.qr_png_b64()},
-        headers={"Cache-Control": "no-store"},
-    )

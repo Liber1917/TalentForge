@@ -309,3 +309,43 @@ def test_resume_review_multipart(monkeypatch: Any, tmp_path: Path) -> None:
     fields = {item["field"]: item["extracted"] for item in data["items"]}
     assert fields["years_experience"] == "5 年"
     assert "Go" in fields["skills"]
+
+
+# ---------------- D25：扩展采集岗位批量入库 ----------------
+
+
+def test_jobs_batch_ingest_and_dedup(monkeypatch: Any, tmp_path: Path) -> None:
+    monkeypatch.delenv("TALENTFORGE_PROFILE_PATH", raising=False)
+    conn = init_db(":memory:", check_same_thread=False)
+    client = TestClient(create_app(conn=conn))
+    cards = [
+        {
+            "title": "Python 后端工程师",
+            "company": "星辰科技",
+            "location": "深圳·南山区",
+            "salary": "25-50K·16薪",
+            "url": "https://www.zhipin.com/job_detail/ext1.html",
+            "tags": ["Python", "分布式"],
+            "description": "负责后端服务开发 996",
+        },
+        {
+            "title": "Go 后端",
+            "company": "海天互娱",
+            "location": "深圳·宝安区",
+            "salary": "20-30K",
+            "url": "https://www.zhipin.com/job_detail/ext2.html",
+        },
+    ]
+    r1 = client.post("/api/jobs/batch", json={"source": "boss", "jobs": cards})
+    assert r1.status_code == 200
+    assert r1.json() == {"ok": True, "received": 2, "inserted": 2}
+    r2 = client.post("/api/jobs/batch", json={"source": "boss", "jobs": cards})
+    assert r2.json()["inserted"] == 0
+
+    jobs = client.get("/api/jobs").json()
+    assert len(jobs) == 2
+    by_title = {j["title"]: j for j in jobs}
+    star = by_title["Python 后端工程师"]
+    assert star["company"] == "星辰科技"
+    assert star["salary"] == "40-80万/年"
+    assert "996 工作制" in [h["label"] for h in star["risk_hits"]]

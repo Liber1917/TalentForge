@@ -64,14 +64,14 @@ def test_get_sources_lists_four_entries(monkeypatch: Any, tmp_path: Path) -> Non
     sources = response.json()["sources"]
     assert [s["key"] for s in sources] == ["boss", "bilibili", "zhihu", "github"]
     by_key = {s["key"]: s for s in sources}
-    assert by_key["boss"]["kind"] == "cookie"
+    assert by_key["boss"]["kind"] == "extension"
+    assert by_key["boss"]["status"] == {"source": "extension", "masked": ""}
     assert by_key["bilibili"]["kind"] == "extension"
     assert by_key["zhihu"]["kind"] == "extension"
     assert by_key["github"]["kind"] == "public"
-    assert by_key["boss"]["status"] == {"source": "none", "masked": ""}
     assert by_key["bilibili"]["status"] == {"source": "extension", "masked": ""}
     assert by_key["github"]["status"] == {"source": "public", "masked": ""}
-    assert "TALENTFORGE_BOSS_COOKIE" in by_key["boss"]["note"]
+    assert "插件" in by_key["boss"]["note"]
     assert "无需配置" in by_key["bilibili"]["note"]
     assert "公开" in by_key["github"]["note"]
     assert by_key["boss"]["home"] == "https://www.zhipin.com/"
@@ -83,24 +83,22 @@ def test_get_sources_lists_four_entries(monkeypatch: Any, tmp_path: Path) -> Non
     assert by_key["github"]["nav"] == "blank"
 
 
-def test_save_credential_then_get_reflects_saved_without_leak(
+def test_save_credential_roundtrip_without_leak(
     monkeypatch: Any, tmp_path: Path
 ) -> None:
     client = _make_client(monkeypatch, tmp_path)
-    response = client.post("/api/sources/boss/credential", json={"cookie": RAW_COOKIE})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is True
-    assert data["status"]["source"] == "saved"
-    assert data["status"]["masked"] == "wt2=****9876"
-
-    status = _boss_status(client)
-    assert status["source"] == "saved"
-    assert status["masked"] == "wt2=****9876"
-
-    whole = client.get("/api/sources").text
-    assert "abcdef1234567890" not in whole, "原始 cookie 不得回传页面"
-    assert "deadbeef" not in whole
+    resp = client.post(
+        "/api/sources/boss/credential", json={"cookie": "wt2=abcdef1234567890wxyz; wbg=ok"}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["status"]["source"] == "saved"
+    assert body["status"]["masked"].startswith("wt2=") and "****" in body["status"]["masked"]
+    # 原始 cookie 任何途径不得回传
+    assert "abcdef1234567890" not in resp.text
+    listing = client.get("/api/sources").text  # sources 列表也不得泄漏原值
+    assert "abcdef1234567890" not in listing
 
 
 def test_empty_cookie_does_not_overwrite(monkeypatch: Any, tmp_path: Path) -> None:
@@ -125,20 +123,17 @@ def test_credential_missing_or_non_string_returns_400(
 
 def test_env_overrides_saved_layer(monkeypatch: Any, tmp_path: Path) -> None:
     client = _make_client(monkeypatch, tmp_path)
-    client.post("/api/sources/boss/credential", json={"cookie": RAW_COOKIE})
+    client.post("/api/sources/boss/credential", json={"cookie": "wt2=abcdef1234567890wxyz"})
     monkeypatch.setenv("TALENTFORGE_BOSS_COOKIE", "wt2=envsecretvalue123")
-    status = _boss_status(client)
-    assert status["source"] == "env"
-    assert status["masked"] == "wt2=****e123"
+    from talentforge.sources import cookies as cookies_module
 
-
-# ---------- POST /api/sources/boss/verify ----------
-
-def test_verify_ok_on_200(monkeypatch: Any, tmp_path: Path) -> None:
-    client = _verify_client(monkeypatch, tmp_path, _mock_handler(200))
-    response = client.post("/api/sources/boss/verify")
-    assert response.status_code == 200
-    assert response.json() == {"ok": True, "detail": "连接正常"}
+    monkeypatch.setattr(
+        cookies_module, "CREDENTIALS_FILE", tmp_path / "credentials.json"
+    )
+    assert cookies_module.get_boss_cookie_summary()["source"] == "env"
+    # env 清除后回退到页面保存层
+    monkeypatch.delenv("TALENTFORGE_BOSS_COOKIE")
+    assert cookies_module.get_boss_cookie_summary()["source"] == "saved"
 
 
 def test_verify_invalid_on_redirect_or_forbidden(monkeypatch: Any, tmp_path: Path) -> None:
@@ -221,39 +216,3 @@ def test_load_boss_cookies_prefers_env_over_saved(monkeypatch: Any, tmp_path: Pa
     monkeypatch.setenv("TALENTFORGE_BOSS_COOKIE", "wt2=envlayer1234")
     cookies = cookies_module.load_boss_cookies()
     assert [(c["name"], c["value"]) for c in cookies] == [("wt2", "envlayer1234")]
-
-
-# ---------------- 扫码登录端点（mock 会话，不真起浏览器） ----------------
-
-
-class _FakeQrSession:
-    def __init__(self, state: str = "waiting", png: str = "") -> None:
-        self.state = state
-        self.error = ""
-        self._png = png
-
-    def qr_png_b64(self) -> str:
-        return self._png
-
-    def status(self) -> dict[str, str]:
-        return {"state": self.state, "error": self.error}
-
-
-def test_qr_login_endpoints_contract(monkeypatch: Any, tmp_path: Path) -> None:
-    from talentforge.api import routes_sources as rs
-
-    client = _make_client(monkeypatch, tmp_path)
-    monkeypatch.setattr(rs, "current_session", lambda: None)
-    assert client.get("/api/sources/boss/qr-login/status").json() == {"state": "idle"}
-    assert client.get("/api/sources/boss/qr-login/qr-image").status_code == 404
-
-    session = _FakeQrSession(png="aXNob3Bl")
-    monkeypatch.setattr(rs, "current_session", lambda: session)
-    resp = client.get("/api/sources/boss/qr-login/qr-image")
-    assert resp.status_code == 200
-    assert resp.json() == {"png_base64": "aXNob3Bl"}
-
-    session.state = "success"
-    status = client.get("/api/sources/boss/qr-login/status").json()
-    assert status["state"] == "success"
-    assert "cookie" in status

@@ -9,7 +9,8 @@
   "host_permissions": [
     "http://127.0.0.1/*",
     "*://*.bilibili.com/*",
-    "*://*.zhihu.com/*"
+    "*://*.zhihu.com/*",
+    "*://*.zhipin.com/*"
   ],
   "content_scripts": [
     {
@@ -20,6 +21,11 @@
     {
       "matches": ["*://*.zhihu.com/*"],
       "js": ["dist/content/zhihu.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.zhipin.com/*"],
+      "js": ["dist/content/boss.js"],
       "run_at": "document_idle"
     }
   ]

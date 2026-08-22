@@ -12,6 +12,7 @@ export default defineConfig({
         "content/kernel": entry("./src/content/kernel.ts"),
         "content/bilibili": entry("./src/content/bilibili.ts"),
         "content/zhihu": entry("./src/content/zhihu.ts"),
+        "content/boss": entry("./src/content/boss.ts"),
         "background/service-worker": entry("./src/background/service-worker.ts"),
       },
       output: {
