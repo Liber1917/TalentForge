@@ -1,0 +1,29 @@
+<!-- 对话首页骨架（Task 4）：聊天流容器 + Composer 输入区。
+     由 chat.js 在进入 #/chat 时 fetch 加载并注入 #chat 容器；
+     fetch 失败时使用 chat.js 内置兜底模板（保持一致）。 -->
+<div class="chat-layout">
+  <div
+    class="chat-stream"
+    id="chat-stream"
+    role="log"
+    aria-live="polite"
+    aria-relevant="additions"
+    aria-label="对话流"
+  ></div>
+
+  <div class="chat-composer">
+    <form class="composer" id="chat-composer" novalidate>
+      <input
+        class="input"
+        id="chat-input"
+        type="text"
+        placeholder="想聊什么、想问什么、想投什么…"
+        aria-label="对话输入框"
+        autocomplete="off"
+      />
+      <button class="btn btn--primary" id="chat-send" type="submit">发送</button>
+    </form>
+  </div>
+
+  <p class="chat-thinking" id="chat-thinking" hidden>正在思考…</p>
+</div>

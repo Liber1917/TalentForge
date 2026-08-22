@@ -55,6 +55,25 @@ const TalentForgeApi = (() => {
     return request("/chat/turns");
   }
 
+  /** 发送对话轮次（spec §1：POST /api/chat/turns，反思回答带 reply_to）。 */
+  function postTurn(payload = {}) {
+    return request("/chat/turns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /** 主张确认（spec §1：POST /api/claims/{id}/confirm → state=active）。 */
+  function confirmClaim(id) {
+    return request(`/claims/${encodeURIComponent(id)}/confirm`, { method: "POST" });
+  }
+
+  /** 主张驳回（spec §1：POST /api/claims/{id}/reject → state=archived）。 */
+  function rejectClaim(id) {
+    return request(`/claims/${encodeURIComponent(id)}/reject`, { method: "POST" });
+  }
+
   /** 岗位列表（spec §2：GET /api/jobs?city=&verdict=&q=）。
    *  @param {object} [params] 筛选参数（city/verdict/q） */
   function getJobs(params = {}) {
@@ -67,7 +86,7 @@ const TalentForgeApi = (() => {
     return request("/profile");
   }
 
-  return { USE_FIXTURES, BASE, getChat, getJobs, getProfile, request };
+  return { USE_FIXTURES, BASE, getChat, getJobs, getProfile, postTurn, confirmClaim, rejectClaim, request };
 })();
 
 if (typeof window !== "undefined") {

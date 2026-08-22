@@ -464,6 +464,72 @@
   max-width: none;
 }
 
+/* ===================== 对话视图补充（Task 4） ===================== */
+
+/* 卡片即消息的引导文案（assistant 含卡片时的文字导语，DESIGN.md §5） */
+.chat-bubble__lead { margin: 0 0 var(--space-3); }
+/* 卡片即消息容器：多卡垂直排列留间距（同时间线节奏） */
+.chat-bubble--cards { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Composer 底栏：与阅读列（720px）同宽居中，与气泡对齐 */
+.chat-composer {
+  max-width: var(--container-reading);
+  margin-inline: auto;
+  margin-top: var(--space-5);
+}
+
+/* 回复中提示（衬线斜体，书房语气，DESIGN.md §1/§3） */
+.chat-thinking {
+  max-width: var(--container-reading);
+  margin: var(--space-3) auto 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--fs-body-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* 风险命中标签（DecisionCard 内联 risk_hits；DESIGN.md §2 暖红） */
+.risk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.risk-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  color: var(--risk);
+  background-color: var(--risk-bg);
+}
+
+/* 证据摘录单行省略（DESIGN.md §5 锚点行：原文摘录，溢出省略号） */
+.evidence-item__text {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 视觉隐藏（仅供读屏，DESIGN.md §7） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ===================== 响应式工具（DESIGN.md §4/§8） ===================== */
 
 /* 通用栅格：375 单列 → 768 双列 → 1280 三列 */

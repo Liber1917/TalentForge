@@ -18,11 +18,29 @@ const AppRouter = (() => {
   };
   const DEFAULT_ROUTE = "/chat";
   const LABELS = { "/chat": "对话", "/jobs": "工作台", "/profile": "画像" };
+  const viewHandlers = {};
 
   /** 从 location.hash 解析出合法路由路径。 */
   function currentPath() {
     const raw = (window.location.hash || "").replace(/^#/, "");
     return ROUTES[raw] ? raw : DEFAULT_ROUTE;
+  }
+
+  /** 注册视图进入回调（路由切到该视图时触发，供视图懒加载渲染）。 */
+  function onView(name, handler) {
+    if (typeof handler !== "function") return;
+    (viewHandlers[name] = viewHandlers[name] || []).push(handler);
+  }
+
+  /** 触发某视图的全部进入回调（单个异常不影响其他回调）。 */
+  function runViewHandlers(view, path) {
+    (viewHandlers[view] || []).forEach((fn) => {
+      try {
+        fn(view, path);
+      } catch (err) {
+        console.error(`视图回调异常（${view}）`, err);
+      }
+    });
   }
 
   /** 切换视图 + 导航高亮 + 更新状态条 + 广播事件。 */
@@ -49,6 +67,7 @@ const AppRouter = (() => {
     }
 
     window.dispatchEvent(new CustomEvent("route:change", { detail: { view, path } }));
+    runViewHandlers(view, path);
   }
 
   /** 程序化跳转（供"聊聊这个岗位"等跨页操作使用）。 */
@@ -73,7 +92,7 @@ const AppRouter = (() => {
     window.addEventListener("hashchange", handleRoute);
   }
 
-  return { ROUTES, DEFAULT_ROUTE, init, currentPath, navigate, setActiveView };
+  return { ROUTES, DEFAULT_ROUTE, init, currentPath, navigate, onView, setActiveView };
 })();
 
 if (typeof window !== "undefined") {
