@@ -16,6 +16,7 @@ from talentforge.api.routes_claims import router as claims_router
 from talentforge.api.routes_jobs import router as jobs_router
 from talentforge.api.routes_profile import router as profile_router
 from talentforge.api.routes_report import router as report_router
+from talentforge.api.routes_sources import router as sources_router
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db
 
@@ -82,6 +83,7 @@ def create_app(
     app.include_router(jobs_router)
     app.include_router(report_router)
     app.include_router(profile_router)
+    app.include_router(sources_router)
 
     app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")
     return app

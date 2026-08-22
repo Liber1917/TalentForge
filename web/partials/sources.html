@@ -1,0 +1,10 @@
+<!-- 平台源设置骨架：头部 + 源卡列表容器。
+     由 sources.js 在进入 #/sources 时 fetch 加载并注入 #sources 容器；
+     fetch 失败时使用 sources.js 内置兜底模板（保持一致）。 -->
+<div class="sources-layout">
+  <header class="sources-head">
+    <h2 class="sources-head__title">平台源</h2>
+    <p class="sources-head__hint">管理各数据平台的接入方式与凭据（参考 OpenBiliClaw 平台源页设计）</p>
+  </header>
+  <div class="sources-list" id="sources-list" role="list" aria-label="平台源列表"></div>
+</div>

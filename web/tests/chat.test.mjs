@@ -212,3 +212,24 @@ test("partials/chat.html 含聊天流与 composer 骨架（aria-live / aria-labe
   assert.match(partial, /id="chat-send"/);
   assert.match(partial, /id="chat-thinking"/);
 });
+
+/* ---------- 视图提及 linkify ---------- */
+
+test("linkifyMentions 把 『平台源』/『工作台』 提及变为 hash 跳转链接", () => {
+  const html = Chat.linkifyMentions(Chat.esc("去『平台源』配置 cookie，再回『工作台』生成报告"));
+  assert.match(html, /<a class="chat-view-link" href="#\/sources">『平台源』<\/a>/);
+  assert.match(html, /<a class="chat-view-link" href="#\/jobs">『工作台』<\/a>/);
+});
+
+test("linkifyMentions 输入必须已转义：含脚本文本不产生可执行标记", () => {
+  const html = Chat.linkifyMentions(Chat.esc('『平台源』<script>alert(1)</script>'));
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /&lt;script&gt;/);
+});
+
+test("renderChatTurn assistant 文案中的视图提及被 linkify，user 泡不受影响", () => {
+  const a = Chat.renderChatTurn({ role: "assistant", text: "去『画像』看看", cards: [], at: "" });
+  assert.match(a, /href="#\/profile"/);
+  const u = Chat.renderChatTurn({ role: "user", text: "去『画像』看看", cards: [], at: "" });
+  assert.doesNotMatch(u, /href="#\/profile"/);
+});

@@ -411,6 +411,7 @@ const TalentForgeJobs = (() => {
         <div class="jobs-empty" role="status">
           <p>还没有决策数据——去对话页聊聊，或先生成一份报告。</p>
           <p><a href="#/chat">去对话页聊聊</a></p>
+          <p><a href="#/sources">配置 Boss cookie（平台源）后再生成报告</a></p>
         </div>`;
   }
 

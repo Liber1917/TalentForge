@@ -291,6 +291,25 @@ const TalentForgeChat = (() => {
     }
   }
 
+  /* 视图提及 → hash 跳转链接：助手文案里 『平台源』 等提及变可点击（输入必须已 esc） */
+  const VIEW_LINKS = {
+    平台源: "#/sources",
+    工作台: "#/jobs",
+    画像: "#/profile",
+    对话: "#/chat",
+  };
+
+  function linkifyMentions(escapedHtml) {
+    let out = String(escapedHtml || "");
+    for (const [label, href] of Object.entries(VIEW_LINKS)) {
+      out = out.replaceAll(
+        `『${label}』`,
+        `<a class="chat-view-link" href="${href}">『${label}』</a>`
+      );
+    }
+    return out;
+  }
+
   function renderChatTurn(turn) {
     const text = String(turn.text || "").trim();
     const cards = Array.isArray(turn.cards) ? turn.cards : [];
@@ -300,11 +319,11 @@ const TalentForgeChat = (() => {
     if (cards.length) {
       return `
         <div class="chat-bubble chat-bubble--assistant chat-bubble--cards">
-          ${text ? `<p class="chat-bubble__lead">${esc(text)}</p>` : ""}
+          ${text ? `<p class="chat-bubble__lead">${linkifyMentions(esc(text))}</p>` : ""}
           ${cards.map(renderCard).join("")}
         </div>`;
     }
-    return `<div class="chat-bubble chat-bubble--assistant">${esc(text)}</div>`;
+    return `<div class="chat-bubble chat-bubble--assistant">${linkifyMentions(esc(text))}</div>`;
   }
 
   /* ---------- 假数据模式 mock（风格取自 fixtures.py 反思提问） ---------- */
@@ -611,9 +630,11 @@ const TalentForgeChat = (() => {
 
   return {
     LOCAL_FIXTURE_CHAT,
+    VIEW_LINKS,
     clip,
     esc,
     fmtAt,
+    linkifyMentions,
     countTrialClaims,
     mockAssistantReply,
     normalizeTurn,

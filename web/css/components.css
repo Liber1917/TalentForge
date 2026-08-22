@@ -927,3 +927,139 @@
   .profile-head__identity { font-size: var(--fs-body); }
   .narrative__identity { font-size: var(--fs-card-title); }
 }
+
+/* ===================== 平台源视图补充（sources） ===================== */
+
+.sources-layout { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.sources-head { padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+.sources-head__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-page-title);
+  font-weight: var(--fw-page-title);
+  line-height: var(--lh-page-title);
+}
+.sources-head__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body-sm);
+  color: var(--text-secondary);
+}
+
+/* 源卡列表：单列阅读宽（凭据粘贴不宜分栏） */
+.sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--container-reading);
+}
+
+.source-card { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.source-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.source-card__name {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-card-title);
+  line-height: var(--lh-card-title);
+}
+/* 接入方式分级标签：中性灰 pill（需 cookie / 插件取数 / 公开接口） */
+.source-card__kind {
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  background-color: var(--surface-sand);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  white-space: nowrap;
+}
+.source-card__head .status-pill { margin-inline-start: auto; }
+
+/* 脱敏摘要：等宽字体展示掩码串，无"复制原值"入口 */
+.source-card__masked {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+.source-card__masked code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--text-primary);
+  background-color: var(--surface-sand);
+  border-radius: var(--radius-inner);
+  padding: var(--space-1) var(--space-2);
+}
+.source-card__masked-empty { color: var(--text-tertiary); }
+
+.source-card__note {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-secondary);
+}
+.source-card__note--plain { color: var(--text-tertiary); }
+
+/* 展开区：details 折叠（卡面摘要 + 展开设置，OpenBiliClaw 布局） */
+.source-card__expand { border-top: 1px dashed var(--border-strong); padding-top: var(--space-3); }
+.source-card__summary {
+  list-style: none;
+  min-height: var(--space-5);
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-body-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.source-card__summary::-webkit-details-marker { display: none; }
+.source-card__summary:hover { color: var(--text-primary); }
+.source-card__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+.source-card__textarea {
+  width: 100%;
+  min-height: calc(var(--control-min) + var(--space-4));
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  line-height: var(--lh-mono);
+}
+.source-card__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* 操作后状态行（aria-live）：保存/验证结果徽章落点，占位高度避免跳动 */
+.source-card__status {
+  min-height: var(--space-5);
+  margin: 0;
+  font-size: var(--fs-body-sm);
+}
+
+/* verify 失效/网络错误徽章：暖红语义（同 risk-note 色板） */
+.status-pill--risk {
+  color: var(--risk);
+  border: 1px solid var(--risk);
+  background-color: var(--risk-bg);
+}
+
+/* 后端未启动占位 */
+.source-offline {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+.source-offline p { margin: 0; }
+
+/* ---------- 平台源移动端（375 档）：操作按钮整行 ---------- */
+@media (max-width: 639px) {
+  .source-card__actions .btn { flex: 1; }
+  .source-card__head .status-pill { margin-inline-start: 0; }
+}

@@ -148,7 +148,8 @@ async def _decision_reply(request: Request) -> ChatTurn:
         return ChatTurn(
             role="assistant",
             text=(
-                "现在还没有可评估的岗位数据——去『工作台』点『生成报告』抓一批岗位，"
+                "现在还没有可评估的岗位数据——去『工作台』点『生成报告』抓一批岗位"
+                "（Boss 抓取需先在『平台源』配置 cookie），"
                 "或先跟我聊聊你的求职意向（城市、方向、底线）。"
             ),
             cards=[],

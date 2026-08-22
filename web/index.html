@@ -14,6 +14,7 @@
   <script src="js/views/chat.js" defer></script>
   <script src="js/views/jobs.js" defer></script>
   <script src="js/views/profile.js" defer></script>
+  <script src="js/views/sources.js" defer></script>
 </head>
 <body class="app-shell">
   <header class="topbar">
@@ -24,6 +25,7 @@
         <a class="nav__tab" href="#/chat">对话</a>
         <a class="nav__tab" href="#/jobs">工作台</a>
         <a class="nav__tab" href="#/profile">画像</a>
+        <a class="nav__tab" href="#/sources">平台源</a>
       </nav>
 
       <span class="topbar__badge" id="pending-count" aria-label="待定池主张数量">待定池 0</span>
@@ -52,6 +54,14 @@
       <div class="view__placeholder">
         <p class="view__placeholder-title">画像</p>
         <p class="view__placeholder-hint">画像三轨与待定池将在下一步接入（Task 6）</p>
+      </div>
+    </section>
+
+    <!-- 平台源设置（OpenBiliClaw 参考设计：源卡 + 凭据粘贴 + 测试连接） -->
+    <section class="view" id="sources" data-view="sources" aria-label="平台源设置" hidden>
+      <div class="view__placeholder">
+        <p class="view__placeholder-title">平台源</p>
+        <p class="view__placeholder-hint">源卡与凭据设置将在下一步接入</p>
       </div>
     </section>
   </main>
