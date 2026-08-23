@@ -29,3 +29,5 @@ class Match(BaseModel):
     reasoning: list[str] = Field(default_factory=list)
     matched_dimensions: list[str] = Field(default_factory=list)
     missing_dimensions: list[str] = Field(default_factory=list)
+    # JD×画像落差（M6 信号投资循环：[{skill,severity,evidence}]，LLM 未输出 → 空）
+    gaps: list[dict[str, str]] = Field(default_factory=list)

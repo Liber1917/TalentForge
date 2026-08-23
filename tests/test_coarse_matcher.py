@@ -1,4 +1,4 @@
-"""粗匹配器测试：围栏 JSON→Match；坏 JSON→默认 LOW；非法 fit→LOW；[已验证]/[待验证] 标记。"""
+"""粗匹配器测试：围栏 JSON→Match；坏 JSON→LOW；非法 fit→LOW；claims 标记；gaps 解析。"""
 
 from __future__ import annotations
 
@@ -7,13 +7,27 @@ from typing import Any
 from talentforge.domain.job import Job
 from talentforge.domain.match import FitLevel
 from talentforge.domain.profile import NarrativeClaim, Profile
-from talentforge.matcher.coarse import COARSE_MATCH_SYSTEM_PROMPT, CoarseMatcher
+from talentforge.matcher.coarse import (
+    COARSE_MATCH_SYSTEM_PROMPT,
+    CoarseMatcher,
+    _parse_gaps,
+)
 
 VALID_JSON = (
     "```json\n"
     '{"market_fit": "high", "growth_fit": "high", '
     '"reasoning": ["技能与岗位要求匹配"], '
     '"matched": ["Python"], "missing": ["Kubernetes"]}\n'
+    "```"
+)
+
+VALID_JSON_WITH_GAPS = (
+    "```json\n"
+    '{"market_fit": "high", "growth_fit": "low", '
+    '"reasoning": ["技能与岗位要求匹配"], '
+    '"matched": ["Python"], "missing": ["Kubernetes"], '
+    '"gaps": [{"skill": "Kubernetes", "severity": "major", '
+    '"evidence": "JD 要求 K8s 部署经验，画像无容器编排记录"}]}\n'
     "```"
 )
 
@@ -101,6 +115,7 @@ async def test_system_prompt_is_static_module_constant() -> None:
     assert "market_fit" in COARSE_MATCH_SYSTEM_PROMPT
     assert "growth_fit" in COARSE_MATCH_SYSTEM_PROMPT
     assert "high|low" in COARSE_MATCH_SYSTEM_PROMPT
+    assert "gaps" in COARSE_MATCH_SYSTEM_PROMPT
 
 
 async def test_bad_json_falls_back_to_low_with_error_reason() -> None:
@@ -141,3 +156,61 @@ async def test_user_message_marks_verified_and_pending_claims() -> None:
     assert "熟悉量化交易策略" in user
     assert "Python 后端工程师" in user
     assert "996" in user
+
+
+async def test_gaps_from_llm_response_passthrough() -> None:
+    """带 gaps 的响应 → match() 透传为 [{skill,severity,evidence}]。"""
+    llm = FakeLLM(VALID_JSON_WITH_GAPS)
+    matcher = CoarseMatcher(llm)
+    result = await matcher.match(_make_profile(), _make_job(), _field_notes())
+
+    assert result.gaps == [
+        {
+            "skill": "Kubernetes",
+            "severity": "major",
+            "evidence": "JD 要求 K8s 部署经验，画像无容器编排记录",
+        }
+    ]
+
+
+async def test_old_response_without_gaps_defaults_to_empty() -> None:
+    """旧响应（无 gaps 字段）→ gaps == []（兼容不炸）。"""
+    llm = FakeLLM(VALID_JSON)
+    matcher = CoarseMatcher(llm)
+    result = await matcher.match(_make_profile(), _make_job(), _field_notes())
+
+    assert result.gaps == []
+
+
+def test_parse_gaps_non_list_returns_empty() -> None:
+    """非 list（None/str/dict）→ []；list 内非 dict 条目跳过。"""
+    assert _parse_gaps(None) == []
+    assert _parse_gaps("Kubernetes") == []
+    assert _parse_gaps({"skill": "Kubernetes"}) == []
+    assert _parse_gaps(["Kubernetes", 42, None]) == []
+
+
+def test_parse_gaps_invalid_severity_defaults_to_minor() -> None:
+    """severity 非法/缺失 → minor；合法 major/minor 原样保留。"""
+    gaps = _parse_gaps(
+        [
+            {"skill": "K8s", "severity": "critical", "evidence": "x"},
+            {"skill": "Go", "evidence": "y"},
+            {"skill": "Rust", "severity": "MAJOR", "evidence": "z"},
+        ]
+    )
+    assert [g["severity"] for g in gaps] == ["minor", "minor", "major"]
+
+
+def test_parse_gaps_truncates_entries_and_field_lengths() -> None:
+    """超过 3 条截断；skill 截 40 字、evidence 截 120 字。"""
+    entries = [
+        {"skill": f"技能{i}", "severity": "major", "evidence": "依据"} for i in range(5)
+    ]
+    assert len(_parse_gaps(entries)) == 3
+
+    long_fields = _parse_gaps(
+        [{"skill": "K" * 60, "severity": "major", "evidence": "E" * 200}]
+    )
+    assert len(long_fields[0]["skill"]) == 40
+    assert len(long_fields[0]["evidence"]) == 120

@@ -158,7 +158,8 @@ def job_contract(
 ) -> dict[str, Any]:
     """Job + decisions 缓存 → spec §1 工作台列表契约。
 
-    gap/remediation 暂无数据源，留空由前端隐藏；evidence 由 JD 摘要 + 缓存理由构成。
+    gap 从 decisions 缓存的 gaps 透传（matcher 产出，LLM 无 gaps → []）；
+    remediation 暂无数据源，留空由前端隐藏；evidence 由 JD 摘要 + 缓存理由构成。
     """
     hits = risk_hits(job)
     cached = decisions.get(job.url)
@@ -166,6 +167,7 @@ def job_contract(
     verdict = cached_verdict or estimate_verdict(job, deal_breakers)
     cached_reason = str(cached["reason"]) if cached and cached.get("reason") else ""
     reason = cached_reason or estimate_reason(job, verdict, hits)
+    cached_gaps = cached.get("gaps") if cached else None
 
     evidence: list[dict[str, str]] = []
     snippet = (job.description or "").strip()
@@ -190,7 +192,9 @@ def job_contract(
             }
             for h in hits
         ],
-        "gap": [],
+        "gap": [g for g in cached_gaps if isinstance(g, dict)]
+        if isinstance(cached_gaps, list)
+        else [],
         "remediation": [],
         "evidence": evidence,
     }

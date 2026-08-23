@@ -180,6 +180,7 @@ async def _decision_reply(request: Request) -> ChatTurn:
             state.decisions[url] = {
                 "verdict": str(item.get("verdict")),
                 "reason": str(item.get("reason", "")),
+                "gaps": item.get("gaps", []),
             }
         verdict = cast(Literal["apply", "hold", "skip"], str(item.get("verdict")))
         decision_cards.append(

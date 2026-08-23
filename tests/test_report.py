@@ -20,7 +20,25 @@ FIXTURES_DIR = Path(__file__).resolve().parents[1] / "talentforge" / "sources" /
 FIXTURE_PATH = FIXTURES_DIR / "boss_search_page.html"
 U = "https://www.zhipin.com/job_detail/r_{}.html"
 
+MATCH_GAPS = [
+    {
+        "skill": "Kubernetes",
+        "severity": "major",
+        "evidence": "JD 要求 K8s 部署经验，画像无容器编排记录",
+    }
+]
+
 VALID_MATCH_JSON = (
+    "```json\n"
+    '{"market_fit": "high", "growth_fit": "high", '
+    '"reasoning": ["技能与岗位要求匹配"], '
+    '"matched": ["Python"], "missing": ["Kubernetes"], '
+    '"gaps": [{"skill": "Kubernetes", "severity": "major", '
+    '"evidence": "JD 要求 K8s 部署经验，画像无容器编排记录"}]}\n'
+    "```"
+)
+
+OLD_MATCH_JSON_WITHOUT_GAPS = (
     "```json\n"
     '{"market_fit": "high", "growth_fit": "high", '
     '"reasoning": ["技能与岗位要求匹配"], '
@@ -89,6 +107,7 @@ def test_report_command_offline_file_end_to_end(monkeypatch, tmp_path) -> None:
     assert report["summary"]["n_skip"] == 0
     assert len(report["items"]) == 5
     assert all(item["verdict"] in ("apply", "hold", "skip") for item in report["items"])
+    assert all(item["gaps"] == MATCH_GAPS for item in report["items"])
     assert db_path.exists(), "--db 指定的库应被写入（upsert 存库）"
 
 
@@ -119,6 +138,25 @@ async def test_generate_report_jobs_override_counts_deal_breaker_skip() -> None:
     assert by_title["C"]["risk_hits"] == []
     assert by_title["A"]["reason"] == "技能与岗位要求匹配"
     assert by_title["C"]["reflective_question"].startswith("岗位要求")
+    assert by_title["A"]["gaps"] == MATCH_GAPS
+    assert by_title["C"]["gaps"] == MATCH_GAPS
+
+
+async def test_generate_report_old_response_without_gaps_defaults_empty() -> None:
+    """旧 LLM 响应（无 gaps 字段）→ items 各项 gaps == []（兼容不炸）。"""
+    profile = _profile()
+    jobs = [_make_job(id="j-old", url=U.format("old"), title="Old")]
+
+    report = await generate_report(
+        profile,
+        "后端工程师",
+        "深圳",
+        jobs=jobs,
+        matcher=CoarseMatcher(FakeLLM(OLD_MATCH_JSON_WITHOUT_GAPS)),
+        conn=init_db(":memory:"),
+    )
+
+    assert report["items"][0]["gaps"] == []
 
 
 def test_reflective_question_with_related_deal_breaker() -> None:

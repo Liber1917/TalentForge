@@ -19,16 +19,25 @@ COARSE_MATCH_SYSTEM_PROMPT = (
     "评估标准：\n"
     "- market_fit（市场契合）：候选人已验证技能与岗位要求的匹配程度；"
     "标 [待验证] 的主张仅作参考。\n"
-    "- growth_fit（成长契合）：岗位方向是否推进候选人成长或深层驱动。\n\n"
+    "- growth_fit（成长契合）：岗位方向是否推进候选人成长或深层驱动。\n"
+    "- gaps（落差提取）：JD 明确要求而画像缺失/未验证的技能；最多 3 条，"
+    "按 severity 从重到轻排序；evidence 必须同时引用 JD 要求与画像现状的落差；"
+    "无明确落差时不输出该字段。\n\n"
     "只输出 JSON，不要任何其他文字：\n"
     '{"market_fit": "high|low", "growth_fit": "high|low", '
     '"reasoning": [理由列表], "matched": [契合维度列表], '
-    '"missing": [缺失维度列表]}'
+    '"missing": [缺失维度列表], '
+    '"gaps": [{"skill": "技能名", "severity": "major|minor", '
+    '"evidence": "JD 要求与画像现状的落差依据"}]}'
 )
 
 _CLAIM_STATES = ("active", "trial")
 _MAX_CLAIMS = 20
 _MAX_DESCRIPTION_CHARS = 1500
+_MAX_GAPS = 3
+_MAX_GAP_SKILL_CHARS = 40
+_MAX_GAP_EVIDENCE_CHARS = 120
+_GAP_SEVERITIES = ("major", "minor")
 
 
 def _risk_hits(field_notes: dict[str, object]) -> list[dict[str, str]]:
@@ -119,6 +128,30 @@ def _as_strings(value: object) -> list[str]:
     return [str(item) for item in value if item is not None]
 
 
+def _parse_gaps(value: object) -> list[dict[str, str]]:
+    """LLM 输出 gaps 容错解析为 [{skill, severity, evidence}]。
+
+    非 list 或 entry 非 dict 跳过；skill/evidence str 化并截断（40/120 字）；
+    severity 只认 major/minor，其余（含缺失）归 minor；最多取前 3 条。
+    LLM 未输出 gaps 字段时解析为空列表（旧响应兼容）。
+    """
+    if not isinstance(value, list):
+        return []
+    gaps: list[dict[str, str]] = []
+    for item in value[:_MAX_GAPS]:
+        if not isinstance(item, dict):
+            continue
+        severity = str(item.get("severity") or "").strip().lower()
+        gaps.append(
+            {
+                "skill": str(item.get("skill") or "")[:_MAX_GAP_SKILL_CHARS],
+                "severity": severity if severity in _GAP_SEVERITIES else "minor",
+                "evidence": str(item.get("evidence") or "")[:_MAX_GAP_EVIDENCE_CHARS],
+            }
+        )
+    return gaps
+
+
 class CoarseMatcher:
     """粗匹配器：一次 LLM 调用产出市场/成长两维 FitLevel（单跳，不回溯）。"""
 
@@ -148,4 +181,5 @@ class CoarseMatcher:
             reasoning=_as_strings(data.get("reasoning")),
             matched_dimensions=_as_strings(data.get("matched")),
             missing_dimensions=_as_strings(data.get("missing")),
+            gaps=_parse_gaps(data.get("gaps")),
         )

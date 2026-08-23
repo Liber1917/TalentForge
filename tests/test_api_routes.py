@@ -18,10 +18,20 @@ from talentforge.api.schemas import ChatTurn
 from talentforge.domain.job import Job
 from talentforge.storage.db import init_db, upsert_job
 
+MATCH_GAPS = [
+    {
+        "skill": "Kubernetes",
+        "severity": "major",
+        "evidence": "JD 要求 K8s 部署经验，画像无容器编排记录",
+    }
+]
+
 VALID_MATCH_JSON = (
     "```json\n"
     '{"market_fit": "high", "growth_fit": "high", '
-    '"reasoning": ["技能与岗位要求匹配"], "matched": ["Python"], "missing": []}\n'
+    '"reasoning": ["技能与岗位要求匹配"], "matched": ["Python"], "missing": [], '
+    '"gaps": [{"skill": "Kubernetes", "severity": "major", '
+    '"evidence": "JD 要求 K8s 部署经验，画像无容器编排记录"}]}\n'
     "```"
 )
 CLAIM_JSON = '{"claims": [{"text": "用户对分布式系统/系统设计积累较深", "confidence": 0.7}]}'
@@ -115,6 +125,20 @@ def test_chat_decision_returns_decision_cards(monkeypatch: Any, tmp_path: Path) 
         assert "risk_hits" in card
         assert "reason" in card
         assert "evidence" in card
+
+
+def test_decision_then_jobs_contract_passes_gaps(monkeypatch: Any, tmp_path: Path) -> None:
+    """决策路由 → decisions 缓存含 gaps → GET /api/jobs 契约 gap 透传（M6 §1.2）。"""
+    client, conn = _make_client(monkeypatch, tmp_path)
+    upsert_job(conn, _job(id="g1", url=_url("g_1"), risk_keys=[]))
+
+    response = client.post("/api/chat/turns", json={"text": "帮我看看深圳的岗位"})
+    assert response.status_code == 200
+    assert _decision_cards(response.json()), "决策意图应产出 DecisionCard"
+
+    jobs = client.get("/api/jobs").json()
+    assert len(jobs) == 1
+    assert jobs[0]["gap"] == MATCH_GAPS
 
 
 def test_chat_free_dialogue_returns_assistant_turn(monkeypatch: Any, tmp_path: Path) -> None:

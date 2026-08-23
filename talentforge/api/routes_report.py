@@ -3,7 +3,7 @@
 状态存内存 dict（task_id → state: running/done/failed + result/error）；
 POST 返回 {task_id, state:running}，GET /api/report/status 不带 task_id 时返回最新任务。
 任务复用 app.state.conn / app.state.llm；jobs 从库读（空库走抓取器）。
-产物写 decisions 缓存（job_url → verdict/reason），供 GET /api/jobs 显示。
+产物写 decisions 缓存（job_url → verdict/reason/gaps），供 GET /api/jobs 显示。
 """
 
 from __future__ import annotations
@@ -32,13 +32,14 @@ class ReportPayload(BaseModel):
 
 
 def _store_decisions(state: Any, items: list[dict[str, object]]) -> None:
-    """把 report items 的 verdict/reason 落 decisions 缓存（按 job url 键控）。"""
+    """把 report items 的 verdict/reason/gaps 落 decisions 缓存（按 job url 键控）。"""
     for item in items:
         url = str(item.get("url"))
         if url:
             state.decisions[url] = {
                 "verdict": str(item.get("verdict")),
                 "reason": str(item.get("reason", "")),
+                "gaps": item.get("gaps", []),
             }
 
 

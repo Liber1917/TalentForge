@@ -59,7 +59,7 @@ async def generate_report(
     默认构造 BossScraper / CoarseMatcher(EnvLLMClient()) / init_db(默认路径)；
     jobs 非 None 时跳过抓取器（offline-file 演示/测试）；conn/matcher 由调用方
     传入以便注入内存库与 FakeLLM。summary 统计 apply/hold/skip，items 每项含
-    verdict、reason、risk_hits、reflective_question。
+    verdict、reason、risk_hits、reflective_question、gaps（LLM 无 gaps → []）。
     """
     if matcher is None:
         matcher = CoarseMatcher(EnvLLMClient())
@@ -92,6 +92,7 @@ async def generate_report(
                 "verdict": verdict.value,
                 "reason": reason,
                 "risk_hits": [str(hit.get("label", "")) for hit in _risk_hits(field_notes)],
+                "gaps": match.gaps,
                 "reflective_question": _reflective_question(job, match, field_notes, profile),
             }
         )
