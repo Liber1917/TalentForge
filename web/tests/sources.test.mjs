@@ -51,7 +51,25 @@ const FIXTURE_SOURCES = [
     home: "https://github.com/",
     nav: "blank",
     status: { source: "public", masked: "" },
-    note: "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",
+    note: "公开 API 可用；展开输入用户名即可拉取仓库作品（未认证 60 次/时，env TALENTFORGE_GITHUB_TOKEN 可提额）",
+  },
+  {
+    key: "gitee",
+    name: "Gitee",
+    kind: "public",
+    home: "https://gitee.com/",
+    nav: "blank",
+    status: { source: "public", masked: "" },
+    note: "公开 API 可用；展开输入 Gitee 用户名即可拉取公开仓库作品",
+  },
+  {
+    key: "arxiv",
+    name: "arXiv",
+    kind: "public",
+    home: "https://arxiv.org/",
+    nav: "blank",
+    status: { source: "public", masked: "" },
+    note: "输入作者名（如 Zhang San）拉取论文；preprint 信号上限 normal，标题含顶会名查 CCF 升 strong",
   },
 ];
 
@@ -118,12 +136,12 @@ test("renderSourceCard B站/知乎插件卡：无需配置说明 + 无粘贴框"
   }
 });
 
-test("renderSourceCard GitHub 公开卡：公开接口 + M4 预留说明", () => {
+test("renderSourceCard GitHub 公开卡：公开接口 + 拉取作品说明", () => {
   const html = Sources.renderSourceCard(FIXTURE_SOURCES[3]);
   assert.match(html, /GitHub/);
   assert.match(html, />公开接口</);
   assert.match(html, /公开 API 可用/);
-  assert.match(html, /M4 作品源接入时可选配 token/);
+  assert.match(html, /展开输入用户名即可拉取仓库作品/);
   assert.doesNotMatch(html, /<textarea/);
 });
 
@@ -131,9 +149,11 @@ test("renderSourceCard GitHub 公开卡：公开接口 + M4 预留说明", () =>
 
 test("renderSourcesList 渲染全部源卡；offline 输出后端未启动占位", () => {
   const html = Sources.renderSourcesList(FIXTURE_SOURCES, false);
-  assert.equal((html.match(/data-source-key=/g) || []).length, 4);
+  assert.equal((html.match(/data-source-key=/g) || []).length, 6);
   assert.match(html, /Boss 直聘/);
   assert.match(html, /知乎/);
+  assert.match(html, /Gitee/);
+  assert.match(html, /arXiv/);
 
   const offline = Sources.renderSourcesList(FIXTURE_SOURCES, true);
   assert.match(offline, /后端未启动/);
@@ -233,4 +253,86 @@ test("partials/sources.html 页头含 VPN/代理直连提示（warn 样式）", 
   assert.match(partial, /先关代理再试/);
   const fallback = Sources.FALLBACK_PARTIAL || "";
   assert.match(fallback, /先关代理再试/, "兜底骨架与 partial 提示保持一致");
+});
+
+/* ---------- 作品源拉取（M5 Task 3） ---------- */
+
+test("renderSourceCard GitHub/Gitee 卡可配置：展开区含用户名输入 + 拉取作品按钮 + 状态行", () => {
+  for (const card of [FIXTURE_SOURCES[3], FIXTURE_SOURCES[4]]) {
+    const html = Sources.renderSourceCard(card);
+    assert.match(html, /<details class="source-card__expand">/);
+    assert.match(html, /<input[^>]*type="text"[^>]*data-role="work-user-input"/);
+    assert.match(html, /data-action="work-fetch"/);
+    assert.match(html, />拉取作品</);
+    assert.match(html, /data-role="source-status"/);
+    assert.match(html, /aria-live="polite"/);
+    assert.match(html, /placeholder="[^"]*用户名/);
+  }
+});
+
+test("renderSourceCard arXiv 新卡：公开接口 + 作者名输入 + preprint 说明 + goto 外链", () => {
+  const html = Sources.renderSourceCard(FIXTURE_SOURCES[5]);
+  assert.match(html, /data-source-key="arxiv"/);
+  assert.match(html, />arXiv</);
+  assert.match(html, />公开接口</);
+  assert.match(html, /placeholder="[^"]*作者名/);
+  assert.match(html, /data-action="work-fetch"/);
+  assert.match(html, /data-key="arxiv"/);
+  assert.match(html, /preprint 信号上限 normal/);
+  assert.match(html, /查 CCF 升 strong/);
+  assert.match(html, /goto\.html\?key=arxiv" target="_blank"/);
+});
+
+test("renderSourceCard 知乎/B站插件卡不动：无作品拉取入口", () => {
+  for (const card of [FIXTURE_SOURCES[1], FIXTURE_SOURCES[2]]) {
+    const html = Sources.renderSourceCard(card);
+    assert.doesNotMatch(html, /data-action="work-fetch"/);
+    assert.doesNotMatch(html, /work-user-input/);
+    assert.doesNotMatch(html, /拉取作品/);
+  }
+});
+
+test("renderWorkExpand 纯函数：输入 id/按钮 data-key 跟随源 key", () => {
+  const html = Sources.renderWorkExpand({ key: "gitee" });
+  assert.match(html, /id="work-input-gitee"/);
+  assert.match(html, /for="work-input-gitee"/);
+  assert.match(html, /data-action="work-fetch" data-key="gitee"/);
+  assert.equal(html.includes("undefined"), false);
+});
+
+test("GRADE_LABEL 中文映射 strong=强/normal=普通/weak=弱", () => {
+  assert.equal(Sources.GRADE_LABEL.strong, "强");
+  assert.equal(Sources.GRADE_LABEL.normal, "普通");
+  assert.equal(Sources.GRADE_LABEL.weak, "弱");
+});
+
+test("renderStatusFeedback 作品拉取结果：total/added/warnings + 去画像页引导 + 空输入提示", () => {
+  const ok = Sources.renderStatusFeedback("work-fetch-ok", { total_fetched: 7, added: 3, warnings: [] });
+  assert.match(ok, /拉取 7 条 · 新增 3/);
+  assert.doesNotMatch(ok, /警告/);
+  assert.match(ok, /status-pill--active/);
+  assert.match(ok, /去画像页校对/);
+
+  const warn = Sources.renderStatusFeedback("work-fetch-ok", {
+    total_fetched: 2, added: 2, warnings: ["github: 403 rate limit"],
+  });
+  assert.match(warn, /警告 1 项/);
+  assert.match(warn, /403/);
+
+  const empty = Sources.renderStatusFeedback("work-fetch-empty", "作者名");
+  assert.match(empty, /请先输入作者名/);
+  assert.match(empty, /status-pill--trial/);
+});
+
+test("XSS：作品源卡名称/说明含脚本一律转义", () => {
+  const evil = Sources.renderSourceCard({
+    key: "arxiv",
+    name: '<script>alert(1)</script>',
+    kind: "public",
+    status: { source: "public", masked: "" },
+    note: '<img src=x onerror=alert(2)>',
+  });
+  assert.match(evil, /&lt;script&gt;/);
+  assert.doesNotMatch(evil, /<script>/);
+  assert.doesNotMatch(evil, /<img src=x/);
 });

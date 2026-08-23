@@ -46,7 +46,9 @@ _SOURCE_NOTES = {
     "boss": "由浏览器插件在你的真实登录态内采集（D25）：装插件后在 Boss 搜索页浏览即自动入库，无需配置 cookie",
     "bilibili": "由浏览器插件登录态采集，无需配置 cookie",
     "zhihu": "由浏览器插件登录态采集，无需配置 cookie",
-    "github": "公开 API 可用；M4 作品源接入时可选配 token 提限额（预留）",
+    "github": "公开 API 可用；展开输入用户名即可拉取仓库作品（未认证 60 次/时，env TALENTFORGE_GITHUB_TOKEN 可提额）",
+    "gitee": "公开 API 可用；展开输入 Gitee 用户名即可拉取公开仓库作品",
+    "arxiv": "输入作者名（如 Zhang San）拉取论文；preprint 信号上限 normal，标题含顶会名查 CCF 升 strong",
 }
 
 
@@ -90,6 +92,24 @@ def list_sources() -> dict:
                 "nav": "blank",
                 "status": {"source": "public", "masked": ""},
                 "note": _SOURCE_NOTES["github"],
+            },
+            {
+                "key": "gitee",
+                "name": "Gitee",
+                "kind": "public",
+                "home": "https://gitee.com/",
+                "nav": "blank",
+                "status": {"source": "public", "masked": ""},
+                "note": _SOURCE_NOTES["gitee"],
+            },
+            {
+                "key": "arxiv",
+                "name": "arXiv",
+                "kind": "public",
+                "home": "https://arxiv.org/",
+                "nav": "blank",
+                "status": {"source": "public", "masked": ""},
+                "note": _SOURCE_NOTES["arxiv"],
             },
         ]
     }

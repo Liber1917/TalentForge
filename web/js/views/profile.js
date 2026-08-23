@@ -15,9 +15,14 @@
    - 结构位置：D17 八格卡片网格（2 列，>1024px 3 列）+ 剥削敏感带
      /再生产账单/流动性区块；market_assessment 存在即标注"待数据积累"
      （D17 市场侧灰置，用户只填自己那半）
-   - 简历校对：profile.resume_review 存在则渲染 抽取 vs 原文 diff
-     视图（逐项确认）；fixtures 模式 mock 示例区块；否则"未上传简历"
-   - 导出 JSON：fixtures 模式本地 Blob 下载；真模式 GET /profile/export
+    - 简历校对：profile.resume_review 存在则渲染 抽取 vs 原文 diff
+      视图（逐项确认）；fixtures 模式 mock 示例区块；否则"未上传简历"
+    - 作品主张区（M5 §1.3/§5，待定池上方独立 section#work-section）：
+      拉 /api/work/artifacts 渲染作品卡（grade 徽章 strong=active/
+      normal=trial/weak=archived 复用 + facts 摘要 + grade_reasons +
+      外链 + 入画像/驳回）；fixtures 模式用 LOCAL_WORK_FIXTURES；
+      入画像 POST /api/work/claims、驳回 POST /api/work/dismiss
+    - 导出 JSON：fixtures 模式本地 Blob 下载；真模式 GET /profile/export
    - 顶部待定池计数：与 chat.js 同计算（profile.narrative_claims 中
      trial 态主张数），写入共享 #pending-count 徽章
    渲染函数为纯字符串输出（文本一律 esc 转义），DOM 层通过 <template>
@@ -36,6 +41,7 @@ const TalentForgeProfile = (() => {
     feedback: "反馈",
     behavior: "行为",
     system: "系统",
+    work: "作品",
   };
   const ATTR_LABEL = {
     salary: "薪资",
@@ -155,6 +161,40 @@ const TalentForgeProfile = (() => {
     ],
   };
 
+  /* 作品主张本地示例（M5）：镜像 /api/work/artifacts 返回结构，fixtures 模式用 */
+  const LOCAL_WORK_FIXTURES = {
+    artifacts: [
+      {
+        artifact_id: "github:demo/raft-viewer",
+        platform: "github",
+        kind: "repo",
+        title: "raft-viewer",
+        url: "https://github.com/demo/raft-viewer",
+        facts: { language: "Python", commits: 142, stars: 87, span_days: 420, is_fork: false },
+        grade: "strong",
+        grade_reasons: ["R3: 持续 commit ≥ 6 个月，长期投入难伪造"],
+        fetched_at: "2026-08-23T08:00:00+00:00",
+      },
+      {
+        artifact_id: "arxiv:2601.01234",
+        platform: "arxiv",
+        kind: "paper",
+        title: "A Note on Consensus Protocols",
+        url: "https://arxiv.org/abs/2601.01234",
+        facts: {
+          authors: ["Zhang San", "Li Si"],
+          first_author: "Zhang San",
+          year: 2026,
+          venue: "arXiv（preprint）",
+        },
+        grade: "normal",
+        grade_reasons: ["R5: preprint 无同行评审，信号上限 normal"],
+        fetched_at: "2026-08-23T08:00:00+00:00",
+      },
+    ],
+    dismissed: [],
+  };
+
   /* 兜底骨架：与 web/partials/profile.html 保持一致（fetch 失败时注入） */
   const FALLBACK_PARTIAL = `
 <div class="profile-layout">
@@ -165,6 +205,8 @@ const TalentForgeProfile = (() => {
     </div>
     <button class="btn btn--secondary" id="profile-export" type="button">导出 JSON</button>
   </header>
+
+  <section class="work-section" id="work-section" aria-label="作品主张"></section>
 
   <div class="profile-tabs" id="profile-tabs" role="tablist" aria-label="画像区块">
     <button class="profile-tab is-active" type="button" role="tab" id="tab-pool" aria-selected="true" aria-controls="panel-pool" data-tab="pool">待定池</button>
@@ -186,6 +228,7 @@ const TalentForgeProfile = (() => {
     loaded: false,
     profile: null,
     activeTab: "pool",
+    work: { artifacts: [], dismissed: [], claimedIds: new Set() },
   };
 
   /* ---------- 工具 ---------- */
@@ -514,6 +557,100 @@ const TalentForgeProfile = (() => {
         </section>`;
   }
 
+  /* ---------- 作品主张区（M5 spec §1.3/§5） ---------- */
+
+  const WORK_GRADE_LABEL = { strong: "强", normal: "普通", weak: "弱" };
+  /* grade → 复用 status-pill 语义色：强=ok 绿 / 普通=琥珀 hold / 弱=中性灰 */
+  const WORK_GRADE_PILL = {
+    strong: "status-pill status-pill--active",
+    normal: "status-pill status-pill--trial",
+    weak: "status-pill status-pill--archived",
+  };
+  const WORK_PLATFORM_LABEL = { github: "GitHub", gitee: "Gitee", arxiv: "arXiv" };
+  const WORK_KIND_LABEL = { repo: "仓库", paper: "论文" };
+  const WORK_EMPTY = "还没有可校对的作品——去平台源页输入 GitHub/Gitee 用户名或 arXiv 作者名拉取";
+
+  function workGradePill(grade) {
+    return WORK_GRADE_PILL[grade] || WORK_GRADE_PILL.normal;
+  }
+
+  /** 外链安全化：仅放行 http(s)，其余回退 #（防 javascript: 注入进 href）。 */
+  function safeWorkUrl(url) {
+    const s = String(url ?? "").trim();
+    return /^https?:\/\//i.test(s) ? esc(s) : "#";
+  }
+
+  /** facts 摘要：repo = 语言·commits·stars；paper = 年份·一作/合作者·venue。 */
+  function workFactsSummary(artifact) {
+    const facts = (artifact && artifact.facts) || {};
+    if (artifact && artifact.kind === "paper") {
+      const authors = Array.isArray(facts.authors) ? facts.authors.map((a) => String(a)) : [];
+      const isFirst = authors.length > 0 && String(facts.first_author || "") === authors[0];
+      return [
+        facts.year != null && facts.year !== "" ? String(facts.year) : "",
+        authors.length ? (isFirst ? "一作" : "合作者") : "",
+        facts.venue != null && facts.venue !== "" ? String(facts.venue) : "",
+      ].filter(Boolean);
+    }
+    return [
+      facts.language != null && facts.language !== "" ? String(facts.language) : "",
+      facts.commits != null ? `${facts.commits} commits` : "",
+      facts.stars != null ? `${facts.stars} stars` : "",
+    ].filter(Boolean);
+  }
+
+  /** 单条作品卡：grade 徽章 + 标题外链 + facts 摘要 + grade_reasons + 入画像/驳回。 */
+  function renderWorkCard(artifact, claimed) {
+    if (!artifact || typeof artifact !== "object") return "";
+    const id = String(artifact.artifact_id || "");
+    const grade = WORK_GRADE_LABEL[artifact.grade] ? artifact.grade : "normal";
+    const platform = WORK_PLATFORM_LABEL[artifact.platform] || String(artifact.platform || "");
+    const kindLabel = WORK_KIND_LABEL[artifact.kind] || String(artifact.kind || "");
+    const factsHtml = workFactsSummary(artifact).map(esc).join(" · ");
+    const reasonsHtml = (Array.isArray(artifact.grade_reasons) ? artifact.grade_reasons : [])
+      .map((r) => esc(String(r)))
+      .join("；");
+    const claimCtl = claimed
+      ? `<span class="status-pill status-pill--active">已入画像</span>`
+      : `<button class="btn btn--primary btn--sm" type="button" data-action="work-claim" data-id="${esc(id)}"
+                 aria-label="作品入画像：${esc(clip(artifact.title, 20))}">入画像</button>`;
+    return `
+        <article class="card card--embedded work-card" data-artifact-id="${esc(id)}" role="listitem">
+          <header class="work-card__head">
+            <span class="${workGradePill(grade)}">${esc(WORK_GRADE_LABEL[grade])}</span>
+            <a class="work-card__title" href="${safeWorkUrl(artifact.url)}" target="_blank"
+               rel="noopener noreferrer">${esc(artifact.title || id)} ↗</a>
+            <span class="work-card__meta">${esc(platform)}${kindLabel ? ` · ${esc(kindLabel)}` : ""}</span>
+          </header>
+          ${factsHtml ? `<p class="work-card__facts">${factsHtml}</p>` : ""}
+          ${reasonsHtml ? `<p class="work-card__reasons">${reasonsHtml}</p>` : ""}
+          <footer class="work-card__actions">
+            ${claimCtl}
+            <button class="btn btn--ghost btn--sm" type="button" data-action="work-dismiss" data-id="${esc(id)}"
+                    aria-label="驳回作品：${esc(clip(artifact.title, 20))}">驳回</button>
+          </footer>
+        </article>`;
+  }
+
+  /** 作品主张区块（待定池 tab 上方独立 section#work-section 的内容）。 */
+  function renderWorkSection(artifacts, dismissed, claimed) {
+    const list = Array.isArray(artifacts) ? artifacts : [];
+    const dismissedSet = new Set(Array.isArray(dismissed) ? dismissed : []);
+    const claimedSet = new Set(claimed || []);
+    const visible = list.filter((a) => a && !dismissedSet.has(a.artifact_id));
+    const cards = visible
+      .map((a) => renderWorkCard(a, claimedSet.has(a.artifact_id)))
+      .join("");
+    return `
+        <header class="work-section__head">
+          <span class="overline">作品主张</span>
+          <span class="work-section__count">${visible.length} 条 · 公开可验证，校对后写入画像</span>
+        </header>
+        ${visible.length
+          ? `<div class="work-section__list" role="list" aria-label="作品主张列表">${cards}</div>`
+          : `<p class="pool-empty" role="status">${esc(WORK_EMPTY)}</p>`}`;
+  }
+
   /* ---------- DOM 挂载与交互 ---------- */
   function getHost() {
     return document.getElementById("profile");
@@ -590,7 +727,105 @@ const TalentForgeProfile = (() => {
     setPanel("panel-utility", renderUtilityTab(p.utility_preferences));
     setPanel("panel-structural", renderStructuralTab(p.structural_position));
     setPanel("profile-resume", renderResumeReview(p.resume_review));
+    renderWork();
     updatePendingCount();
+  }
+
+  /* ---------- 作品主张区交互（M5） ---------- */
+
+  function renderWork() {
+    setPanel("work-section", renderWorkSection(
+      state.work.artifacts,
+      state.work.dismissed,
+      claimedWorkIds(),
+    ));
+  }
+
+  /** 已入集合 = 本会话已主张的 id ∪ 画像 narrative_claims 中 sources kind=work 的 ref。 */
+  function claimedWorkIds() {
+    const ids = new Set(state.work.claimedIds || []);
+    for (const claim of (state.profile && state.profile.narrative_claims) || []) {
+      for (const src of (claim && claim.sources) || []) {
+        if (src && src.kind === "work" && src.ref) ids.add(String(src.ref));
+      }
+    }
+    return ids;
+  }
+
+  async function workRequest(path, body) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  /* 作品加载：真模式每次进入视图直连后端（no-store，sources 页可能新拉了作品）；
+     fixtures 模式用 LOCAL_WORK_FIXTURES；作品拉取无 fixtures 假数据。 */
+  async function loadWork() {
+    if (typeof TalentForgeApi === "undefined" || TalentForgeApi.USE_FIXTURES) {
+      state.work = {
+        artifacts: LOCAL_WORK_FIXTURES.artifacts,
+        dismissed: [...LOCAL_WORK_FIXTURES.dismissed],
+        claimedIds: new Set(),
+      };
+      renderWork();
+      return;
+    }
+    try {
+      const res = await fetch("/api/work/artifacts", {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      state.work = {
+        artifacts: Array.isArray(data && data.artifacts) ? data.artifacts : [],
+        dismissed: Array.isArray(data && data.dismissed) ? data.dismissed : [],
+        claimedIds: new Set(),
+      };
+    } catch (err) {
+      state.work = { artifacts: [], dismissed: [], claimedIds: new Set() };
+    }
+    renderWork();
+  }
+
+  async function claimWorkArtifact(artifactId, btn) {
+    if (!artifactId) return;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "写入中…";
+    }
+    /* fixtures 模式本地乐观；真模式端点成功后才置"已入画像" */
+    if (typeof TalentForgeApi !== "undefined" && !TalentForgeApi.USE_FIXTURES) {
+      try {
+        await workRequest("/api/work/claims", { artifact_ids: [artifactId] });
+      } catch (err) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "入画像";
+        }
+        return;
+      }
+    }
+    state.work.claimedIds.add(artifactId);
+    renderWork();
+  }
+
+  async function dismissWorkArtifact(artifactId) {
+    if (!artifactId) return;
+    if (typeof TalentForgeApi !== "undefined" && !TalentForgeApi.USE_FIXTURES) {
+      try {
+        await workRequest("/api/work/dismiss", { artifact_id: artifactId });
+      } catch (err) {
+        return;
+      }
+    }
+    state.work.dismissed.push(artifactId);
+    renderWork();
   }
 
   function updatePendingCount() {
@@ -704,6 +939,18 @@ const TalentForgeProfile = (() => {
       actionClaim(rejectBtn.closest("[data-claim-id]"), "reject");
       return;
     }
+    const workClaimBtn = evt.target.closest("[data-action='work-claim']");
+    if (workClaimBtn) {
+      evt.preventDefault();
+      claimWorkArtifact(workClaimBtn.dataset.id, workClaimBtn);
+      return;
+    }
+    const workDismissBtn = evt.target.closest("[data-action='work-dismiss']");
+    if (workDismissBtn) {
+      evt.preventDefault();
+      dismissWorkArtifact(workDismissBtn.dataset.id);
+      return;
+    }
     const reviewBtn = evt.target.closest("[data-action='review-confirm']");
     if (reviewBtn) {
       evt.preventDefault();
@@ -733,7 +980,10 @@ const TalentForgeProfile = (() => {
   }
 
   function onEnterProfile() {
-    mountPartial().then(loadProfile);
+    mountPartial().then(() => {
+      loadProfile();
+      loadWork();
+    });
   }
 
   function init() {
@@ -751,9 +1001,12 @@ const TalentForgeProfile = (() => {
 
   return {
     ATTR_LABEL,
+    FALLBACK_PARTIAL,
     LOCAL_FIXTURE_PROFILE,
     LOCAL_FIXTURE_RESUME_REVIEW,
+    LOCAL_WORK_FIXTURES,
     POOL_EMPTY,
+    WORK_EMPTY,
     clip,
     countTrialClaims,
     esc,
@@ -766,6 +1019,10 @@ const TalentForgeProfile = (() => {
     renderResumeReview,
     renderStructuralTab,
     renderUtilityTab,
+    renderWorkCard,
+    renderWorkSection,
+    workFactsSummary,
+    workGradePill,
     init,
   };
 })();

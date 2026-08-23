@@ -287,3 +287,119 @@ test("partials/profile.html 含四 tab + 面板 + 导出按钮骨架（ARIA tab 
   assert.match(partial, /id="profile-identity"/);
   assert.match(partial, /id="profile-resume"/);
 });
+
+/* ---------- 作品主张区（M5 Task 3） ---------- */
+
+const WORK = Profile.LOCAL_WORK_FIXTURES;
+
+test("LOCAL_WORK_FIXTURES 2 条示例（repo + paper，镜像 /api/work/artifacts 结构）", () => {
+  assert.equal(WORK.artifacts.length, 2);
+  assert.deepEqual(WORK.dismissed, []);
+  assert.equal(WORK.artifacts[0].kind, "repo");
+  assert.equal(WORK.artifacts[1].kind, "paper");
+  for (const a of WORK.artifacts) {
+    assert.ok(a.artifact_id && a.platform && a.title && a.url);
+    assert.ok(["strong", "normal", "weak"].includes(a.grade));
+  }
+});
+
+test("renderWorkSection 渲染作品卡：facts 摘要 + grade_reasons + 外链 + 入画像/驳回按钮", () => {
+  const html = Profile.renderWorkSection(WORK.artifacts, [], []);
+  assert.match(html, /work-section__head/);
+  assert.match(html, /作品主张/);
+  assert.match(html, /2 条/);
+  assert.match(html, /data-artifact-id="github:demo\/raft-viewer"/);
+  assert.match(html, /Python · 142 commits · 87 stars/);
+  assert.match(html, /R3: 持续 commit ≥ 6 个月/);
+  assert.match(html, /2026 · 一作 · arXiv（preprint）/);
+  assert.match(html, /R5: preprint 无同行评审/);
+  assert.match(html, /href="https:\/\/github.com\/demo\/raft-viewer"/);
+  assert.match(html, /target="_blank"\s+rel="noopener noreferrer"/);
+  assert.equal((html.match(/data-action="work-claim"/g) || []).length, 2);
+  assert.equal((html.match(/data-action="work-dismiss"/g) || []).length, 2);
+  assert.match(html, /GitHub · 仓库/);
+  assert.match(html, /arXiv · 论文/);
+});
+
+test("grade 徽章映射：strong→active / normal→trial / weak→archived（缺省 normal）", () => {
+  assert.equal(Profile.workGradePill("strong"), "status-pill status-pill--active");
+  assert.equal(Profile.workGradePill("normal"), "status-pill status-pill--trial");
+  assert.equal(Profile.workGradePill("weak"), "status-pill status-pill--archived");
+  assert.equal(Profile.workGradePill("bogus"), "status-pill status-pill--trial");
+
+  const html = Profile.renderWorkSection(WORK.artifacts, [], []);
+  assert.match(html, />强</);
+  assert.match(html, />普通</);
+  const weak = Profile.renderWorkSection([{ ...WORK.artifacts[0], grade: "weak" }], [], []);
+  assert.match(weak, /status-pill--archived/);
+  assert.match(weak, />弱</);
+});
+
+test("已入画像态：claimed 卡显示徽章替代按钮，驳回仍可用", () => {
+  const one = [WORK.artifacts[0]];
+  const claimed = Profile.renderWorkSection(one, [], [WORK.artifacts[0].artifact_id]);
+  assert.match(claimed, />已入画像</);
+  assert.doesNotMatch(claimed, /data-action="work-claim"/);
+  assert.match(claimed, /data-action="work-dismiss"/);
+
+  const fresh = Profile.renderWorkSection(one, [], []);
+  assert.match(fresh, /data-action="work-claim"/);
+  assert.doesNotMatch(fresh, /已入画像/);
+});
+
+test("驳回态：dismissed 内的卡片不再渲染；全部驳回输出引导文案", () => {
+  const partial = Profile.renderWorkSection(
+    WORK.artifacts, [WORK.artifacts[0].artifact_id], [],
+  );
+  assert.doesNotMatch(partial, /raft-viewer/);
+  assert.match(partial, /A Note on Consensus Protocols/);
+  assert.match(partial, /1 条/);
+
+  const all = Profile.renderWorkSection(
+    WORK.artifacts,
+    [WORK.artifacts[0].artifact_id, WORK.artifacts[1].artifact_id],
+    [],
+  );
+  assert.match(all, /还没有可校对的作品/);
+  assert.match(all, /平台源页/);
+});
+
+test("XSS：作品 title/facts/reasons 转义；javascript: 链接中和为 #", () => {
+  const evil = Profile.renderWorkSection([
+    {
+      artifact_id: "github:a/b<script>",
+      platform: "github",
+      kind: "repo",
+      title: "<script>alert(1)</script>",
+      url: "javascript:alert(2)",
+      facts: { language: '<img src=x onerror=alert(3)>', commits: 5, stars: 1 },
+      grade: "normal",
+      grade_reasons: ["<b>R5</b>"],
+    },
+  ], [], []);
+  assert.match(evil, /&lt;script&gt;/);
+  assert.doesNotMatch(evil, /<script>/);
+  assert.doesNotMatch(evil, /<img src=x/);
+  assert.doesNotMatch(evil, /<b>R5<\/b>/);
+  assert.doesNotMatch(evil, /href="javascript:/);
+  assert.match(evil, /href="#"/);
+});
+
+test("空数据/脏数据防御：null 条目与空参不抛错且无 undefined 字样", () => {
+  const dirty = Profile.renderWorkSection([null, {}, WORK.artifacts[0]], null, null);
+  assert.equal(dirty.includes("undefined"), false);
+  assert.equal(Profile.renderWorkSection(null, null, null).includes("undefined"), false);
+  assert.equal(Profile.renderWorkCard(null, false), "");
+});
+
+test("partials/profile.html 与 FALLBACK_PARTIAL 含独立 work-section 骨架（待定池上方）", () => {
+  const partial = readFileSync(new URL("../partials/profile.html", import.meta.url), "utf8");
+  for (const doc of [partial, Profile.FALLBACK_PARTIAL]) {
+    assert.match(doc, /id="work-section"/);
+    assert.match(doc, /aria-label="作品主张"/);
+    assert.ok(
+      doc.indexOf('id="work-section"') < doc.indexOf('id="profile-tabs"'),
+      "作品主张区应位于待定池 tab 上方",
+    );
+  }
+});

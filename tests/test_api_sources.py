@@ -57,12 +57,12 @@ def _verify_client(monkeypatch: Any, tmp_path: Path, handler) -> TestClient:
 
 # ---------- GET /api/sources ----------
 
-def test_get_sources_lists_four_entries(monkeypatch: Any, tmp_path: Path) -> None:
+def test_get_sources_lists_six_entries(monkeypatch: Any, tmp_path: Path) -> None:
     client = _make_client(monkeypatch, tmp_path)
     response = client.get("/api/sources")
     assert response.status_code == 200
     sources = response.json()["sources"]
-    assert [s["key"] for s in sources] == ["boss", "bilibili", "zhihu", "github"]
+    assert [s["key"] for s in sources] == ["boss", "bilibili", "zhihu", "github", "gitee", "arxiv"]
     by_key = {s["key"]: s for s in sources}
     assert by_key["boss"]["kind"] == "extension"
     assert by_key["boss"]["status"] == {"source": "extension", "masked": ""}
@@ -81,6 +81,22 @@ def test_get_sources_lists_four_entries(monkeypatch: Any, tmp_path: Path) -> Non
     assert by_key["boss"]["nav"] == "self"
     assert by_key["bilibili"]["nav"] == "blank"
     assert by_key["github"]["nav"] == "blank"
+    # M5 作品源：gitee/arxiv 两张公开卡（可配置拉取）
+    assert by_key["gitee"]["kind"] == "public"
+    assert by_key["gitee"]["name"] == "Gitee"
+    assert by_key["gitee"]["home"] == "https://gitee.com/"
+    assert by_key["gitee"]["nav"] == "blank"
+    assert by_key["gitee"]["status"] == {"source": "public", "masked": ""}
+    assert "公开" in by_key["gitee"]["note"]
+    assert by_key["arxiv"]["kind"] == "public"
+    assert by_key["arxiv"]["name"] == "arXiv"
+    assert by_key["arxiv"]["home"] == "https://arxiv.org/"
+    assert by_key["arxiv"]["nav"] == "blank"
+    assert by_key["arxiv"]["status"] == {"source": "public", "masked": ""}
+    assert "作者名" in by_key["arxiv"]["note"]
+    assert "Zhang San" in by_key["arxiv"]["note"]
+    assert "preprint 信号上限 normal" in by_key["arxiv"]["note"]
+    assert "CCF 升 strong" in by_key["arxiv"]["note"]
 
 
 def test_save_credential_roundtrip_without_leak(

@@ -2,10 +2,13 @@
    TalentForge 平台源设置视图（#sources），参考 OpenBiliClaw 平台源页设计
    - 每个来源一张卡：卡面 = 名称 + 接入方式标签 + 接入状态徽章 +
      脱敏摘要；展开 = 接入方式说明 + 凭据粘贴框 + 保存 + 测试连接 + 状态行
-   - Boss 直聘（kind=cookie）：粘贴浏览器复制的 cookie 串；留空保存
-     不覆盖现有值（后端语义）；测试连接做轻量验证（真实外呼）
-   - B站/知乎（kind=extension）：插件登录态采集，无需配置 cookie
-   - GitHub（kind=public）：公开接口，M4 作品源接入时可选配 token（预留）
+    - Boss 直聘（kind=cookie）：粘贴浏览器复制的 cookie 串；留空保存
+      不覆盖现有值（后端语义）；测试连接做轻量验证（真实外呼）
+    - B站/知乎（kind=extension）：插件登录态采集，无需配置 cookie
+    - GitHub/Gitee/arXiv（kind=public，M5 作品源）：展开输入
+      用户名/作者名 → "拉取作品"按钮真调 POST /api/work/fetch
+      （作品拉取无 fixtures 假数据，后端必须跑着；失败显示
+      "后端未启动"），状态行显示 total/added/warnings
    - 凭据脱敏：后端只回传前4后4掩码（如 abcd****wxyz），
      页面无"复制原值"入口；状态徽章 none=琥珀 hold 语义、
      已配置=ok 绿、插件/公开=中性
@@ -28,6 +31,19 @@ const TalentForgeSources = (() => {
     public: "公开接口",
   };
   const KIND_LABEL = { cookie: "需 cookie", extension: "插件取数", public: "公开接口" };
+
+  /* ---------- 作品源（M5 spec §5）：可配置拉取的公开源卡 ---------- */
+  const WORK_KEYS = ["github", "gitee", "arxiv"];
+  const WORK_INPUT_LABEL = { github: "用户名", gitee: "用户名", arxiv: "作者名" };
+  const WORK_INPUT_PLACEHOLDER = {
+    github: "如 octocat（GitHub 用户名）",
+    gitee: "如 mindspore（Gitee 用户名）",
+    arxiv: "如 Zhang San（作者名，姓在前）",
+  };
+  /* fetch body 字段名（routes_work.WorkFetchRequest 契约） */
+  const WORK_FETCH_FIELD = { github: "github_user", gitee: "gitee_user", arxiv: "arxiv_author" };
+  /* grade 中文映射（与后端 routes_work._GRADE_ZH 一致） */
+  const GRADE_LABEL = { strong: "强", normal: "普通", weak: "弱" };
 
   /* 兜底骨架：与 web/partials/sources.html 保持一致（fetch 失败时注入） */
   const FALLBACK_PARTIAL = `
@@ -119,6 +135,28 @@ const TalentForgeSources = (() => {
       </details>`;
   }
 
+  /** 作品源展开区（M5 §5）：用户名/作者名输入 + "拉取作品"按钮 + 状态行（纯渲染）。 */
+  function renderWorkExpand(source) {
+    const key = esc(source.key);
+    const label = WORK_INPUT_LABEL[source.key] || "用户名";
+    const placeholder = esc(WORK_INPUT_PLACEHOLDER[source.key] || "如 用户名");
+    return `
+      <details class="source-card__expand">
+        <summary class="source-card__summary">拉取作品</summary>
+        <div class="source-card__body">
+          <label class="overline" for="work-input-${key}">${esc(label)}</label>
+          <input class="input source-card__work-input" id="work-input-${key}" type="text"
+                 placeholder="${placeholder}"
+                 autocomplete="off" spellcheck="false" data-role="work-user-input">
+          <div class="source-card__actions">
+            <button class="btn btn--primary btn--sm" type="button"
+                    data-action="work-fetch" data-key="${key}">拉取作品</button>
+          </div>
+          <p class="source-card__status" role="status" aria-live="polite" data-role="source-status"></p>
+        </div>
+      </details>`;
+  }
+
   /** 单张源卡：卡面（名称/方式标签/状态徽章/脱敏摘要）+（cookie 源）展开区。 */
   function renderSourceCard(source) {
     if (!source || typeof source !== "object") return "";
@@ -138,7 +176,9 @@ const TalentForgeSources = (() => {
     const homeLink = key
       ? `<a class="source-card__site" href="goto.html?key=${key}" ${attrs}>官网 ↗</a>`
       : "";
-    const expand = kindKey === "cookie" ? renderCookieExpand(source) : "";
+    const expand = kindKey === "cookie"
+      ? renderCookieExpand(source)
+      : (WORK_KEYS.includes(String(source.key)) ? renderWorkExpand(source) : "");
     return `
         <article class="card source-card" data-source-key="${key}" role="listitem">
           <header class="source-card__head">
@@ -153,7 +193,7 @@ const TalentForgeSources = (() => {
         </article>`;
   }
 
-  /** 操作后的状态行反馈：已保存 / 连接正常（ok）/ 已失效（risk）/ 网络错误（risk）。 */
+  /** 操作后的状态行反馈：已保存 / 连接正常（ok）/ 已失效（risk）/ 网络错误（risk）/ 作品拉取结果。 */
   function renderStatusFeedback(kind, detail) {
     if (kind === "saved") {
       return `<span class="status-pill status-pill--active">已保存</span> <a class="source-next-link" href="#/jobs">去工作台生成报告 →</a>`;
@@ -163,6 +203,16 @@ const TalentForgeSources = (() => {
     }
     if (kind === "verify-invalid") {
       return `<span class="status-pill status-pill--risk">cookie 已失效，请重新粘贴</span>`;
+    }
+    if (kind === "work-fetch-ok") {
+      const d = detail || {};
+      const warnings = Array.isArray(d.warnings) ? d.warnings : [];
+      const firstWarn = warnings.length ? `（${esc(clip(String(warnings[0]), 24))}）` : "";
+      const warnText = warnings.length ? `，警告 ${warnings.length} 项${firstWarn}` : "";
+      return `<span class="status-pill status-pill--active">拉取 ${Number(d.total_fetched) || 0} 条 · 新增 ${Number(d.added) || 0}${warnText}</span> <a class="source-next-link" href="#/profile">去画像页校对 →</a>`;
+    }
+    if (kind === "work-fetch-empty") {
+      return `<span class="status-pill status-pill--trial">请先输入${esc(detail || "用户名")}</span>`;
     }
     if (kind === "error") {
       return `<span class="status-pill status-pill--risk">${esc(clip(detail || "操作失败，请稍后重试", 40))}</span>`;
@@ -311,6 +361,41 @@ const TalentForgeSources = (() => {
 
   let qrPollTimer = null;
 
+  /* 作品拉取（M5）：真功能直连后端 POST /api/work/fetch（不走 USE_FIXTURES base，
+     无假数据模式）；失败提示后端未启动。 */
+  async function fetchWorks(key, btn) {
+    const card = btn ? btn.closest("[data-source-key]") : null;
+    const input = card ? card.querySelector("[data-role='work-user-input']") : null;
+    const value = input ? input.value.trim() : "";
+    if (!value) {
+      setStatusLine(key, renderStatusFeedback("work-fetch-empty", WORK_INPUT_LABEL[key] || "用户名"));
+      if (input) input.focus();
+      return;
+    }
+    const original = btn ? btn.textContent : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "拉取中…";
+    }
+    setStatusLine(key, "");
+    const body = { github_user: "", gitee_user: "", arxiv_author: "" };
+    body[WORK_FETCH_FIELD[key] || "github_user"] = value;
+    try {
+      const data = await requestJson("/api/work/fetch", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setStatusLine(key, renderStatusFeedback("work-fetch-ok", data));
+    } catch (err) {
+      setStatusLine(key, renderStatusFeedback("error", "拉取失败：后端未启动"));
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = original || "拉取作品";
+      }
+    }
+  }
+
   async function fetchJson(url, options) {
     const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store", ...options });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -353,6 +438,12 @@ const TalentForgeSources = (() => {
   }
 
   function onHostClick(evt) {
+    const workBtn = evt.target.closest("[data-action='work-fetch']");
+    if (workBtn) {
+      evt.preventDefault();
+      fetchWorks(workBtn.dataset.key || "", workBtn);
+      return;
+    }
     const qrBtn = evt.target.closest("[data-action='qr-start']");
     if (qrBtn) {
       evt.preventDefault();
@@ -405,6 +496,8 @@ const TalentForgeSources = (() => {
   return {
     SOURCE_LABEL,
     KIND_LABEL,
+    GRADE_LABEL,
+    WORK_KEYS,
     OFFLINE_HINT,
     FALLBACK_PARTIAL,
     esc,
@@ -412,6 +505,7 @@ const TalentForgeSources = (() => {
     pillClassForSource,
     renderMaskedLine,
     renderSourceCard,
+    renderWorkExpand,
     renderStatusFeedback,
     renderOffline,
     renderSourcesList,
