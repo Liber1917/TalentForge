@@ -100,3 +100,28 @@ sources：作品拉取展开区（github/gitee 用户名、arxiv 作者名）/ g
 ### 全量基线
 
 pytest **287** + web node:test **100** + extension vitest 45 全绿。
+
+---
+
+## M7 验收附录 — 方向探索器（2026-08-23）
+
+> 依据：spec-m7-explorer.md + 用户三口径需求原话。任务链：spec 33aa66a → T1+T2 da70a38 → T3 8769bec → T4 本节。
+
+### 真机验收（用户真实画像：Demo 画像 + 100 仓库 + 165 岗位库）
+
+| 环节 | 结果 |
+|---|---|
+| 快照生成（一次 LLM 深推） | ✅ 71 秒出 5 张方向卡，三口径齐（track×3/lifestyle×1/field×1） |
+| 卡质量 | ✅ 每张证据链引用真实资产（vitfly 356 commits/Raft 兴趣主张/Verilog 作品/996 硬边界）；data_backed 诚实分级（国内市场卡=数据✓，换桌卡=推理≈+低置信） |
+| 约束碰撞 | ✅ 每张卡对照硬边界（"996 × 大厂 Infra 值班常态"）与八格（"现金缓冲为空不建议裸辞"）——D17 深度参与推理 |
+| 方向质量（灵魂验收） | ✅ 识别出"分布式 Infra（C++/存储）"交叉方向（vitfly C++ 长周期 + Raft 协议兴趣的证据组合）；"边缘/嵌入式"判为偏远（6-12 月转型，诚实降置信 35%）——不迎合（D10） |
+| Web | ✅ #/explore 卡展渲染（scope 徽章/置信/data_backed 标记/证据链折叠）；"深挖"→ 跳对话页自动注入 assistant 引导泡（B→A 闭环） |
+
+### 排查实录
+
+- 首次 API snapshot 返回 ok:false（error 被截断无信息）——直接引擎层复现为空异常；原因：LLM 5.x 思考模型偶发空 content。**未修复**（偶发+重试即过，第二次成功）；记 backlog：LLM 空响应重试一次。
+- 快照生成中 UI 显示加载态，71 秒完成——AbortController 120s 超时设置合理。
+
+### 全量基线
+
+pytest **314** + web node:test **117** + extension vitest 45 全绿。
