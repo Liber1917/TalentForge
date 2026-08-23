@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
+  buildWapiParams,
   collectVisibleJobs,
   extractCityCode,
   extractSearchQuery,
@@ -99,5 +100,31 @@ describe("boss adapter", () => {
   it("extracts city code from query param and legacy path (edge)", () => {
     const legacy = element(CARD_HTML);
     expect(legacy.querySelector("a")?.getAttribute("href")).toContain("/job_detail/");
+  });
+});
+
+describe("wapi filter passthrough", () => {
+  it("passes filter params from the page URL through to the wapi query", () => {
+    const params = buildWapiParams(
+      "https://www.zhipin.com/web/geek/jobs?city=101020100&query=agent&salary=406/&experience=108/&scale=231",
+    );
+    expect(params.get("query")).toBe("agent");
+    expect(params.get("city")).toBe("101020100");
+    expect(params.get("salary")).toBe("406/");
+    expect(params.get("experience")).toBe("108/");
+    expect(params.get("scale")).toBe("231");
+    expect(params.get("page")).toBe("1");
+  });
+
+  it("drops unknown params and defaults city/query when absent", () => {
+    const params = buildWapiParams("https://www.zhipin.com/web/geek/jobs?foo=bar&utm=x");
+    expect(params.get("foo")).toBeNull();
+    expect(params.get("city")).toBe("101280600");
+    expect(params.get("query")).toBe("");
+  });
+
+  it("falls back to legacy path city when query param missing", () => {
+    const params = buildWapiParams("https://www.zhipin.com/c101280600-p100103/");
+    expect(params.get("city")).toBe("101280600");
   });
 });

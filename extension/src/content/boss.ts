@@ -4,9 +4,8 @@
 // load, scroll, and SPA URL changes so both /web/geek/job and legacy
 // /c<city>-p<position>/ search pages are covered.
 import {
+  buildWapiParams,
   collectVisibleJobs,
-  extractCityCode,
-  extractSearchQuery,
   isSearchPage,
   mapWapiJobList,
 } from "../shared/platforms/boss";
@@ -48,14 +47,7 @@ function reportDiagnostic(kind: string, detail: Record<string, unknown>): void {
 
 /** wapi channel: same-origin fetch of the job-list JSON (cookies+stoken auto). */
 async function harvestViaWapi(): Promise<void> {
-  const city = extractCityCode(window.location.href);
-  const query = extractSearchQuery(window.location.href);
-  const params = new URLSearchParams({
-    query: query ?? "",
-    city: city ?? "101280600",
-    page: "1",
-    pageSize: "30",
-  });
+  const params = buildWapiParams(window.location.href);
   try {
     const res = await fetch(`${WAPI_PAGE_URL}?${params.toString()}`, {
       credentials: "include",

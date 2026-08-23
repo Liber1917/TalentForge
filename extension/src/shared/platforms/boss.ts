@@ -70,6 +70,41 @@ export function isSearchPage(url: string): boolean {
   );
 }
 
+/**
+ * wapi joblist.json 支持的筛选参数白名单——页面上用了哪些筛选就透传哪些，
+ * 采集结果与用户所见一致。参数值原样转发（Boss 编码：如 salary=406/、experience=108/）。
+ */
+export const WAPI_FILTER_PARAMS: ReadonlySet<string> = new Set([
+  "query",
+  "city",
+  "salary",
+  "experience",
+  "degree",
+  "industry",
+  "scale",
+  "stage",
+  "jobType",
+  "position",
+  "multiSubway",
+  "multiBusinessDistrict",
+  "sortType",
+]);
+
+/** Build the wapi query string from the current page URL (filters pass through). */
+export function buildWapiParams(url: string): URLSearchParams {
+  const params = new URLSearchParams({ page: "1", pageSize: "30" });
+  try {
+    for (const [key, value] of new URL(url).searchParams.entries()) {
+      if (WAPI_FILTER_PARAMS.has(key) && value) params.set(key, value);
+    }
+  } catch {
+    // malformed URL — fall back to defaults below
+  }
+  if (!params.get("city")) params.set("city", extractCityCode(url) ?? "101280600");
+  if (!params.get("query")) params.set("query", extractSearchQuery(url) ?? "");
+  return params;
+}
+
 /** Map a wapi job-list record to the normalized card shape. */
 export function mapWapiJob(item: Record<string, unknown>): BossJobCard | null {
   // 实测字段（2026-08 joblist.json）：主键为 encryptJobId，无 jobId/brandName。
