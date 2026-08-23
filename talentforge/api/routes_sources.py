@@ -12,10 +12,12 @@ verify 为启发式判定（详见 _judge_verify），网络失败优雅降级�
 
 from __future__ import annotations
 
+import logging
+
 import re
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from talentforge.sources.cookies import (
@@ -23,6 +25,8 @@ from talentforge.sources.cookies import (
     resolve_boss_raw,
     save_boss_cookie,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sources"])
 
@@ -145,3 +149,20 @@ async def verify_boss() -> dict:
     except httpx.HTTPError as exc:
         return {"ok": False, "detail": f"网络错误：{exc}"}
     return _judge_verify(resp)
+
+
+# ---------------- 扩展诊断遥测（排查期临时端点，采集链路稳定后删除） ----------------
+
+
+@router.post("/api/debug")
+async def debug_telemetry(request: Request) -> dict:
+    """扩展 content script 上报的采集诊断（wapi code / DOM 卡片数 / 错误）。
+
+    仅写入服务日志用于排查；非正式 API，D25 采集链路稳定后删除。
+    """
+    try:
+        body = await request.json()
+        print(f"[TF-DEBUG] {body.get('kind', '?')} {body}", flush=True)
+    except Exception as exc:  # noqa: BLE001 — 遥测绝不因解析异常打断
+        print(f"[TF-DEBUG] parse-fail {exc}", flush=True)
+    return {"ok": True}
