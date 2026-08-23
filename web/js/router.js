@@ -1,8 +1,8 @@
 /* =========================================================
    TalentForge Hash 路由器（无框架 vanilla）
    路由：#/chat（对话首页）· #/jobs（决策工作台）· #/profile（画像面板）
-        · #/sources（平台源设置）
-   默认：#/chat。未知 hash 回退默认。
+         · #/sources（平台源设置）· #/explore（方向探索）
+    默认：#/chat。未知 hash 回退默认。
    - 切换 data-view 视图显隐
    - 导航 tab 高亮（aria-current="page"）
    - 同步底部状态条"当前视图"
@@ -17,6 +17,7 @@ const AppRouter = (() => {
     "/jobs": "jobs",
     "/profile": "profile",
     "/sources": "sources",
+    "/explore": "explore",
   };
   const DEFAULT_ROUTE = "/chat";
   const LABELS = {
@@ -24,6 +25,7 @@ const AppRouter = (() => {
     "/jobs": "工作台",
     "/profile": "画像",
     "/sources": "平台源",
+    "/explore": "探索",
   };
   const viewHandlers = {};
 

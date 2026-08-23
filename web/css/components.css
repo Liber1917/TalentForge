@@ -1349,3 +1349,216 @@
 @media (max-width: 639px) {
   .suggest-card__stars { margin-inline-start: 0; }
 }
+
+/* ===================== 方向探索视图（M7：#/explore 快照页） ===================== */
+
+.explore-layout { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.explore-head { padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+.explore-head__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-page-title);
+  font-weight: var(--fw-page-title);
+  line-height: var(--lh-page-title);
+}
+.explore-head__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-secondary);
+}
+
+/* 资产盘点折叠区（D23 防线 c：生成前先给用户核对纠错） */
+.explore-brief {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-secondary);
+  padding: var(--space-4) var(--space-5);
+}
+.explore-brief__summary {
+  list-style: none;
+  min-height: var(--space-5);
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-body-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.explore-brief__summary::-webkit-details-marker { display: none; }
+.explore-brief__summary:hover { color: var(--text-primary); }
+.explore-brief__body {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border-strong);
+}
+
+/* 四组紧凑清单：技能簇/强信号/行为兴趣/硬边界 */
+.explore-brief__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 640px) { /* 平板 768 档：双列 */
+  .explore-brief__grid { grid-template-columns: repeat(2, 1fr); }
+}
+.explore-brief__group { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.explore-brief__list {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.explore-brief__empty {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  color: var(--text-tertiary);
+}
+.explore-brief__note {
+  margin: var(--space-4) 0 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--text-tertiary);
+}
+.explore-brief__note a { color: var(--accent); }
+
+/* 主按钮行 + 时长提示 */
+.explore-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.explore-actions__hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+}
+
+/* 方向卡展区：单列阅读宽（卡片信息密度高，不分栏） */
+.explore-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--container-reading);
+}
+
+/* scope 徽章：三口径复用 verdict-badge 三态配色语义
+   （track=terracotta 实底 / lifestyle=琥珀描边 / field=stone 描边） */
+.scope-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-6);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-serif);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-verdict);
+  line-height: var(--lh-verdict);
+  white-space: nowrap;
+}
+.scope-badge--track { background-color: var(--accent); color: var(--accent-contrast); }
+.scope-badge--lifestyle { color: var(--hold); border: 1px solid var(--hold); background-color: var(--hold-bg); }
+.scope-badge--field { color: var(--skip); border: 1px solid var(--skip); background-color: var(--skip-bg); }
+
+/* 单张方向卡 */
+.direction-card { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.direction-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.direction-card__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-card-title);
+  line-height: var(--lh-card-title);
+  overflow-wrap: break-word;
+}
+.direction-card__meta {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+/* data_backed 双标记：数据✓ = ok 绿 / 推理≈ = 琥珀（不可验证推理诚实降级，D13） */
+.direction-card__databack--data { color: var(--ok); }
+.direction-card__databack--inferred { color: var(--hold); }
+
+.direction-card__row {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.direction-card__row .overline,
+.direction-card__step .overline { display: block; margin-bottom: var(--space-1); }
+
+/* 第一步：accent-soft 高亮小卡（可立即执行的动作） */
+.direction-card__step {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-inner);
+  background-color: var(--accent-soft);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+
+/* 约束碰撞提示行：琥珀色带（八格/硬边界 × 方向形态的碰撞，知情非恐吓） */
+.direction-card__constraints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--hold);
+  border-radius: var(--radius-inner);
+  background-color: var(--hold-bg);
+}
+.direction-card__constraint {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-secondary);
+  overflow-wrap: break-word;
+}
+
+.direction-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* 快照生成态：加载（衬线斜体书房语气）/ 失败（risk 色） */
+.explore-status { margin: 0; font-size: var(--fs-body-sm); }
+.explore-status--loading { font-family: var(--font-serif); font-style: italic; color: var(--text-tertiary); }
+.explore-status--error { color: var(--risk); }
+
+/* 空态 */
+.explore-empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+}
+.explore-empty p { margin: 0; }
+
+/* ---------- 方向探索移动端（375 档）：meta 换行、深挖按钮整行 ---------- */
+@media (max-width: 639px) {
+  .direction-card__meta { margin-inline-start: 0; }
+  .direction-card__actions .btn { flex: 1; }
+}

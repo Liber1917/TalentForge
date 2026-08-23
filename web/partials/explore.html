@@ -1,0 +1,18 @@
+<!-- 方向探索骨架（M7）：页头 + 资产盘点折叠区 + 快照按钮 + 方向卡展区。
+     由 explore.js 在进入 #/explore 时 fetch 加载并注入 #explore 容器；
+     fetch 失败时使用 explore.js 内置兜底模板（保持一致）。 -->
+<div class="explore-layout">
+  <header class="explore-head">
+    <h2 class="explore-head__title">方向探索</h2>
+    <p class="explore-head__hint">基于已有画像、作品与决策历史，向可能性空间搜索——先快照看全景，再挑一张深谈（三口径：赛道/活法/场域）</p>
+  </header>
+  <details class="explore-brief" id="explore-brief">
+    <summary class="explore-brief__summary">资产盘点（先核对再生成——有误去画像页纠错）</summary>
+    <div class="explore-brief__body" id="explore-brief-body" data-role="explore-brief-body"></div>
+  </details>
+  <div class="explore-actions">
+    <button class="btn btn--primary" id="explore-generate" type="button" data-action="generate-snapshot">生成方向快照</button>
+    <p class="explore-actions__hint">一次深度推理，约需 1 分钟</p>
+  </div>
+  <div class="explore-cards" id="explore-cards" role="list" aria-label="方向卡列表"></div>
+</div>

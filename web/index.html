@@ -15,6 +15,7 @@
   <script src="js/views/jobs.js" defer></script>
   <script src="js/views/profile.js" defer></script>
   <script src="js/views/sources.js" defer></script>
+  <script src="js/views/explore.js" defer></script>
 </head>
 <body class="app-shell">
   <header class="topbar">
@@ -26,6 +27,7 @@
         <a class="nav__tab" href="#/jobs">工作台</a>
         <a class="nav__tab" href="#/profile">画像</a>
         <a class="nav__tab" href="#/sources">平台源</a>
+        <a class="nav__tab" href="#/explore">探索</a>
       </nav>
 
       <span class="topbar__badge" id="pending-count" aria-label="待定池主张数量">待定池 0</span>
@@ -62,6 +64,14 @@
       <div class="view__placeholder">
         <p class="view__placeholder-title">平台源</p>
         <p class="view__placeholder-hint">源卡与凭据设置将在下一步接入</p>
+      </div>
+    </section>
+
+    <!-- 方向探索（M7：资产盘点 + 方向卡快照 + 深谈入口） -->
+    <section class="view" id="explore" data-view="explore" aria-label="方向探索" hidden>
+      <div class="view__placeholder">
+        <p class="view__placeholder-title">方向探索</p>
+        <p class="view__placeholder-hint">方向卡快照将在下一步接入</p>
       </div>
     </section>
   </main>

@@ -7,8 +7,11 @@
      证据类型 + 来源 + 时间 + 原文摘录，摘录单行省略号）
    - 卡片操作：claim 确认/驳回（假数据模式本地 mock 局部更新；
      真模式调端点）；DecisionCard 整体可点击 → 跳工作台并定位岗位
-   - Composer：发送 → 假数据模式本地 mock 回复；真模式 POST /api/chat/turns
-   - ReflectivePrompt 内嵌输入框：回答 → mock 追加对话 + 局部更新
+    - Composer：发送 → 假数据模式本地 mock 回复；真模式 POST /api/chat/turns
+    - ReflectivePrompt 内嵌输入框：回答 → mock 追加对话 + 局部更新
+    - 方向探索深谈接续（M7）：进入视图读 localStorage tf_deep_dive_card
+      （探索页"深挖"按钮写入），存在则清除并在欢迎逻辑后注入一条
+      深谈引导 assistant 泡（含方向卡口径/标题摘要上下文）
    渲染函数为纯字符串输出（文本一律 esc 转义，杜绝 innerHTML 拼接
    用户/LLM 文本），DOM 层通过 <template> 解析后挂载，便于 node:test 直接断言。
    ========================================================= */
@@ -27,6 +30,9 @@ const TalentForgeChat = (() => {
     behavior: "行为",
     system: "系统",
   };
+  /* 方向探索深谈接续（M7）：localStorage tf_deep_dive_card 的 scope 口径中文 */
+  const EXPLORE_SCOPE_LABEL = { track: "赛道", lifestyle: "活法", field: "场域" };
+  const DEEP_DIVE_KEY = "tf_deep_dive_card";
 
   /* ---------- 离线假数据：镜像 talentforge/api/fixtures.py get_fixture_chat ---------- */
   const LOCAL_FIXTURE_CHAT = [
@@ -612,7 +618,50 @@ const TalentForgeChat = (() => {
   }
 
   function onEnterChat() {
-    mountPartial().then(loadChat);
+    mountPartial().then(async () => {
+      await loadChat();
+      injectDeepDiveIntro();
+    });
+  }
+
+  /* ---------- 方向探索深谈接续（M7 spec §1 A 端） ---------- */
+
+  /** 取出并清除 tf_deep_dive_card（一次性握手；损坏数据忽略返回 null）。 */
+  function takeDeepDiveCard() {
+    try {
+      const raw = window.localStorage.getItem(DEEP_DIVE_KEY);
+      if (!raw) return null;
+      window.localStorage.removeItem(DEEP_DIVE_KEY);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && parsed.title) {
+        return { title: String(parsed.title), scope: String(parsed.scope || "") };
+      }
+    } catch (err) {
+      /* localStorage 不可用或 JSON 损坏：按无深谈处理 */
+    }
+    return null;
+  }
+
+  /** 深谈引导 assistant 泡（纯函数）：含方向卡摘要上下文（口径 + 标题）。 */
+  function buildDeepDiveTurn(title, scope) {
+    const t = String(title || "").trim();
+    const scopeLabel = EXPLORE_SCOPE_LABEL[String(scope || "")] || "";
+    const context = scopeLabel ? `（口径：${scopeLabel}）` : "";
+    return {
+      role: "assistant",
+      text: `想深挖「${t}」这个方向${context}。我们从这个方向的具体问题开始：你最想弄清楚哪一点——市场、准备路径、还是适不适合你？`,
+      cards: [],
+      at: new Date().toISOString(),
+    };
+  }
+
+  /** 欢迎逻辑渲染完成后注入深谈引导（localStorage 有待接续卡时，一次性）。 */
+  function injectDeepDiveIntro() {
+    const stream = getStream();
+    if (!stream) return;
+    const card = takeDeepDiveCard();
+    if (!card) return;
+    appendTurn(buildDeepDiveTurn(card.title, card.scope));
   }
 
   function init() {
@@ -631,6 +680,8 @@ const TalentForgeChat = (() => {
   return {
     LOCAL_FIXTURE_CHAT,
     VIEW_LINKS,
+    DEEP_DIVE_KEY,
+    EXPLORE_SCOPE_LABEL,
     clip,
     esc,
     fmtAt,
@@ -645,6 +696,8 @@ const TalentForgeChat = (() => {
     renderEvidenceChain,
     renderReflectivePrompt,
     renderRiskNote,
+    buildDeepDiveTurn,
+    takeDeepDiveCard,
     init,
   };
 })();
