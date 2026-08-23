@@ -69,3 +69,34 @@ sources：作品拉取展开区（github/gitee 用户名、arxiv 作者名）/ g
 ## 7. pending-user
 
 - 拉取**用户本人**的 GitHub/Gitee/arXiv（平台源页输入用户名或告知我代跑）→ 个人作品主张 + 个人简历产出。
+
+---
+
+## M6 验收附录 — 信号投资循环（2026-08-23）
+
+> 依据：D26 + spec-m6-signal-investment.md。四任务链：T1 gap 产出（b12f66d）→ T2 推荐器（d81f7d2）→ T3 工作台 UI（01da196）→ T4 真机验收（本节）。
+
+### 真机链路（用户真实数据）
+
+| 环节 | 结果 |
+|---|---|
+| 决策管线产 gap（report/run 3 岗） | ✅ go 岗 → "Golang (major)"、量化岗 → "量化金融领域经验 (major)"，evidence 引用 JD×画像落差 |
+| gap → GitHub 推荐（/api/suggest） | ✅ 规则筛后 5 条（awesome-go/caddy 等，全"超大项目参考"标记——top 结果均为 >50k stars 属实） |
+| for-job 联动 | ✅ 读 decisions 缓存 gaps → 逐 gap 推荐分组 |
+| 浏览器 UI | ✅ 详情 gap 条目（skill+severity 徽章+evidence）→ 补信号 → 5 张推荐卡（stars/desc/why/参与外链） |
+
+### 排查实录（T4）
+
+1. **决策路由超时**：对话页决策触发对 156 个库内岗位逐个 LLM 匹配（分钟级）——验收改用 report/run limit=3；生产侧全量决策耗时问题记入 backlog（需批量并发/缓存）。
+2. **GitHub search 未认证限流**：search API 未认证 10 次/分，首次 for-job 全空（403 被容错为空列表）且**空结果被缓存 24h**——教训：失败结果不该长缓存（记 backlog：失败不缓存/短 TTL）。token 环境变量生效后正常。
+
+### 限制（backlog）
+
+- 决策全量耗时（需并发或按需匹配）
+- 推荐缓存：失败空结果也缓存 24h（应只缓存成功结果）
+- 语言不在缓存键（T2 deviation 记录）
+- 参与回流检测依赖 M5 作品源手动重拉（无自动周期）
+
+### 全量基线
+
+pytest **287** + web node:test **100** + extension vitest 45 全绿。
