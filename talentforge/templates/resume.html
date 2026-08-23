@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% if basics %}{{ basics.name }} · 简历{% else %}简历 · TalentForge{% endif %}</title>
+  <link rel="stylesheet" href="/css/tokens.css" />
+  <style>
+    /* =========================================================
+       TalentForge 简历产出页（M5 spec §6 最小版，easyCV 借鉴：数据→模板→A4→打印）
+       布局走页内样式 + <link> tokens.css；暖纸面只衬工具条区，
+       A4 纸面白底黑字（打印保真，terracotta 只点缀标题与 grade 徽章）。
+       ========================================================= */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--surface-primary);
+      font-family: var(--font-sans);
+      font-size: var(--fs-body-sm);
+      line-height: var(--lh-body-sm);
+      color: var(--text-primary);
+    }
+
+    /* ---------- 顶部工具条（打印隐藏） ---------- */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      width: 210mm;
+      max-width: 100%;
+      margin: var(--space-6) auto var(--space-4);
+      padding: 0 var(--space-2);
+    }
+    .toolbar .brand {
+      font-family: var(--font-serif);
+      font-size: var(--fs-card-title);
+      font-weight: var(--fw-card-title);
+      margin-right: auto;
+    }
+    .btn-print {
+      font: inherit;
+      border: none;
+      border-radius: var(--radius-control);
+      background: var(--accent);
+      color: var(--accent-contrast);
+      min-height: var(--control-min);
+      padding: 0 var(--space-5);
+      cursor: pointer;
+    }
+    .btn-print:hover { background: var(--accent-hover); }
+    .btn-back {
+      color: var(--text-secondary);
+      text-decoration: none;
+      min-height: var(--control-min);
+      display: inline-flex;
+      align-items: center;
+      padding: 0 var(--space-2);
+    }
+    .btn-back:hover { color: var(--accent); }
+
+    /* ---------- 画像缺失占位 ---------- */
+    .placeholder {
+      max-width: 480px;
+      margin: var(--space-9) auto;
+      text-align: center;
+      background: var(--surface-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      padding: var(--space-7);
+    }
+    .placeholder h1 {
+      font-family: var(--font-serif);
+      font-size: var(--fs-card-title);
+      font-weight: var(--fw-card-title);
+      margin: 0 0 var(--space-3);
+    }
+    .placeholder p { margin: var(--space-2) 0; }
+    .placeholder a { color: var(--accent); }
+
+    /* ---------- A4 纸面 ----------
+       打印保真锚点：纸面范围内重锚亮色 token（值同 tokens.css Light 列）——
+       简历永远白底黑字，系统暗色模式不渗入纸面；内部样式一律 var() 引用。 */
+    .sheet {
+      --surface-secondary: #ffffff;
+      --text-primary: #141413;
+      --text-secondary: #5e5d59;
+      --text-tertiary: #87867f;
+      --border-subtle: #f0eee6;
+      --border-strong: #e8e6dc;
+      --accent: #c96442;
+      --accent-soft: #f0e0d8;
+      --hold: #a88242;
+      --skip: #87867f;
+
+      width: 210mm;
+      max-width: 100%;
+      min-height: 297mm;
+      margin: 0 auto var(--space-8);
+      padding: 16mm 16mm 14mm;
+      background: var(--surface-secondary);
+      color: var(--text-primary);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-elevated);
+    }
+
+    /* 头部：姓名 + 一句话定位 + 联系方式位（打印后手填） */
+    .resume-name {
+      font-family: var(--font-serif);
+      font-size: var(--fs-page-title);
+      font-weight: var(--fw-page-title);
+      line-height: var(--lh-page-title);
+      margin: 0;
+    }
+    .resume-identity { color: var(--text-secondary); margin: var(--space-2) 0 0; }
+    .resume-contact {
+      color: var(--text-tertiary);
+      font-size: var(--fs-caption);
+      margin: var(--space-2) 0 0;
+    }
+
+    /* 区块标题：衬线 + terracotta 点缀 */
+    .sheet h2 {
+      font-family: var(--font-serif);
+      font-size: var(--fs-body);
+      font-weight: var(--fw-verdict);
+      color: var(--accent);
+      letter-spacing: 2px;
+      margin: var(--space-6) 0 var(--space-3);
+      padding-bottom: var(--space-1);
+      border-bottom: 1px solid var(--border-strong);
+    }
+
+    /* 技能 pills */
+    .pills { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .pill {
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      padding: 2px var(--space-3);
+      font-size: var(--fs-caption);
+      color: var(--text-secondary);
+      background: var(--surface-secondary);
+    }
+
+    /* 作品条目：grade 徽章（strong=terracotta 实底 / normal=琥珀描边 / weak=stone 描边） */
+    .work { padding: var(--space-2) 0; }
+    .work-head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+    .work-title {
+      font-family: var(--font-serif);
+      font-size: var(--fs-verdict);
+      font-weight: var(--fw-verdict);
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .work-title:hover { color: var(--accent); }
+    .work-tags {
+      color: var(--text-tertiary);
+      font-size: var(--fs-caption);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .work-facts { color: var(--text-secondary); font-size: var(--fs-caption); margin: 2px 0 0; }
+    .badge {
+      font-family: var(--font-serif);
+      font-size: var(--fs-caption);
+      border-radius: var(--radius-pill);
+      padding: 1px var(--space-3);
+      white-space: nowrap;
+    }
+    .badge-strong { background: var(--accent); color: var(--surface-secondary); }
+    .badge-normal { color: var(--hold); border: 1px solid var(--hold); }
+    .badge-weak { color: var(--skip); border: 1px solid var(--skip); }
+
+    /* 能力主张列表 */
+    .claims { margin: 0; padding: 0; list-style: none; }
+    .claims li { padding: 2px 0 2px var(--space-4); position: relative; }
+    .claims li::before {
+      content: "—";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    /* 求职意向 */
+    .intent { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); margin: 0; }
+
+    /* ---------- 打印（window.print 导出 PDF） ---------- */
+    @page { size: A4; margin: 14mm 16mm; }
+    @media print {
+      .no-print { display: none !important; }
+      /* 纸面即页面：白底（打印保真，不用会随暗色系统翻转的 surface token） */
+      body { background: #ffffff; }
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .work, .claims li { break-inside: avoid; }
+      a, .work-title { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  {% if basics %}
+  <header class="toolbar no-print">
+    <span class="brand">TalentForge</span>
+    <button type="button" class="btn-print" onclick="window.print()">打印 / 导出 PDF</button>
+    <a class="btn-back" href="/#/profile">返回画像</a>
+  </header>
+
+  <main class="sheet">
+    <header>
+      <h1 class="resume-name">{{ basics.name }}</h1>
+      {% if basics.identity %}<p class="resume-identity">{{ basics.identity }}</p>{% endif %}
+      <p class="resume-contact">
+        {% if basics.email %}{{ basics.email }}{% else %}邮箱 ____________{% endif %}
+        · 电话 ____________
+        {% if basics.locations %}· 城市 {{ basics.locations|join('／') }}{% endif %}
+      </p>
+    </header>
+
+    {% if basics.skills %}
+    <section>
+      <h2>技能</h2>
+      <div class="pills">
+        {% for skill in basics.skills %}<span class="pill">{{ skill }}</span>{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if works %}
+    <section>
+      <h2>作品</h2>
+      {% for w in works %}
+      <div class="work">
+        <div class="work-head">
+          <span class="badge badge-{{ w.grade }}">{{ w.grade_zh }}</span>
+          <a class="work-title" href="{{ w.url }}">{{ w.title }}</a>
+          <span class="work-tags">{{ w.platform_zh }} · {{ w.kind_zh }}</span>
+        </div>
+        {% if w.facts_summary %}<p class="work-facts">{{ w.facts_summary }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if claims %}
+    <section>
+      <h2>能力主张</h2>
+      <ul class="claims">
+        {% for text in claims %}<li>{{ text }}</li>{% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>求职意向</h2>
+      <p class="intent">
+        <span>目标岗位：{{ basics.desired_roles|join('／') or '——' }}</span>
+        <span>期望城市：{{ basics.locations|join('／') or '——' }}</span>
+        {% if basics.salary %}<span>薪资：{{ basics.salary }}</span>{% endif %}
+      </p>
+    </section>
+  </main>
+  {% else %}
+  <header class="toolbar no-print">
+    <span class="brand">TalentForge</span>
+    <a class="btn-back" href="/#/profile">返回画像</a>
+  </header>
+  <div class="placeholder">
+    <h1>暂无画像数据</h1>
+    <p>还没有可生成简历的画像。请先在画像页<strong>上传简历</strong>或与助手聊聊，沉淀你的画像与作品主张。</p>
+    <p><a href="/#/profile">前往画像页 →</a></p>
+  </div>
+  {% endif %}
+</body>
+</html>
