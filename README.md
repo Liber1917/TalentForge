@@ -172,3 +172,26 @@ node --test web/tests/chat.test.mjs web/tests/jobs.test.mjs web/tests/profile.te
 | `/api/feedback/summary` | GET | 决策分布统计 |
 
 规则版无 LLM 参与偏好（D18 人机边界）；详见 `docs/research/m4-acceptance.md`。
+
+---
+
+## M5 作品源 + 简历产出（GitHub/Gitee/arXiv）
+
+拉取你的公开作品 → 信号分级（D24：持续 commit 的原创仓库/顶会一作 = 强信号）→ verified 主张入画像 → A4 简历产出（D23 三层防线：LLM 零参与判断）。
+
+### 使用
+
+1. 平台源页（`#/sources`）→ 展开 GitHub/Gitee 卡输入用户名（或 arXiv 卡输入作者名）→ **拉取作品**
+2. 画像页（`#/profile`）顶部"作品主张"区：查看 grade 徽章（强/普通/弱）+ 结构化事实 + 分级依据 → **入画像** / **驳回**
+3. 简历产出：`http://127.0.0.1:8420/resume` → 打印/导出 PDF（A4 排版，作品按信号强度排序）
+
+### API
+
+| 端点 | 方法 | 用途 |
+|---|---|---|
+| `/api/work/fetch` | POST | 拉取 `{github_user, gitee_user, arxiv_author}`（任选）并入库 |
+| `/api/work/artifacts` | GET | 作品列表 + 驳回清单 |
+| `/api/work/claims` | POST | 作品 → verified 主张写入画像（`{artifact_ids}` 或 `{all: true}`） |
+| `/api/work/dismiss` | POST | 驳回作品（不再生成主张） |
+
+GitHub 未认证限流 60 请求/时（每仓库 3 次详情）；`TALENTFORGE_GITHUB_TOKEN` 可升至 5000/时。详见 `docs/research/m5-acceptance.md`。
