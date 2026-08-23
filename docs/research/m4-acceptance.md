@@ -55,3 +55,35 @@
 
 - Python pytest：**181 passed**（T1 +22、T2 +9，原 150 无回归）
 - Web node:test：**74 passed**（T3 +6，原 68 无回归）
+
+---
+
+## D25 补充验收 — Boss 扩展采集闭环（2026-08-23）
+
+> 依据：D25 决策（扩展采集为反爬平台唯一通道）。诊断遥测（/api/debug + [TF-DEBUG] 日志）**保留**——排查期产物转为常驻观测点。
+
+### 排查实录（三次断点，全部实证定位）
+
+1. **ES import 致 content script 从未执行**：vite 单配置共享 chunk，产物带 `import{...}`——Chrome content script 是经典脚本，注入即 SyntaxError（网页 console 才可见，而被反调试关闭，故长期无声失败；M2b 的 B站/知乎采集同病）。修复：`scripts/build-extension.mjs` 每入口独立 IIFE 构建（service worker 保持 ES module）。
+2. **URL 判断疑云**：用户实际 URL `/web/geek/jobs`（复数）——`includes('/web/geek/job')` 子串匹配本就覆盖，非问题；真正断点靠遥测排除。
+3. **wapi 字段名错位**：实测 `joblist.json` 主键为 `encryptJobId`（无 `jobId`/`brandName`），30 条全被映射过滤。修复：映射按 `encryptJobId` + `skills` 并入 tags + `jobExperience/jobDegree/bossName` 组合为 description。
+
+### 验收结果（真机，用户浏览器）
+
+| 步骤 | 结果 |
+|---|---|
+| 重装扩展 + 刷新 `/web/geek/jobs?query=agent&city=101020100` | ✅ 遥测 `[TF-DEBUG] wapi-body code:0 listLen:30` |
+| wapi → 映射 → POST /api/jobs/batch | ✅ 200，一次入库 30 条 |
+| 数据质量 | ✅ 真实公司（乐鑫/TapTap/九方云等）、明文薪资自动换算年薪（45-90万等）、地点/技能标签齐全 |
+| 去重 | ✅ 重复刷新不重复入库（URL 主键） |
+| 工作台消费 | ✅ `?real=1#/jobs` 可筛选浏览 |
+
+### 已知边界
+
+- 列表接口无公司名字段（boss 视角卡片），company 暂缺——详情页补全留待后续（点击进详情时 job_detail 页可采）
+- 只采第一页（page=1, pageSize=30）；翻页采集待用户实际翻页行为驱动（scroll 触发的 DOM 通道在 SPA 虚拟列表下 cards=0，暂以 wapi 为主通道）
+- `__zp_stoken__` 有效期内 wapi 可用；过期后需刷新页面让页面 JS 重算（正常浏览天然满足）
+
+### 操作说明（用户视角）
+
+装扩展 → 正常登录并浏览 Boss 搜索页（任意关键词/城市）→ 数据自动入库 → 工作台查看。**筛选/换城市/换关键词都支持**：搜索 URL 的 query/city 参数被 content script 解析后按当前条件调 wapi——你搜什么就采什么。
