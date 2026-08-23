@@ -137,6 +137,9 @@ async def _commit_summary(
 
     per_page=1 列表第一条 = 最新 commit；Link header rel="last" 页码 = 总数
     （无 Link = 1 条）；页码 == 总数 时取该页即最早一条。
+    单仓库详情偶发失败软降级为 (0, "", "") 不毁整批（实测 GitHub commits
+    接口间歇 504——repos 列表已带 stars/forks/language，缺 commits 只是
+    分级保守化）；限流(403/429)仍按源级错误上抛。
     """
     url = f"{api_base}/repos/{full_name}/commits"
     resp = await client.get(url, params={"per_page": 1})
@@ -145,7 +148,10 @@ async def _commit_summary(
     if resp.status_code in (403, 429):
         raise WorkSourceError(rate_limit_msg)
     if resp.status_code >= 400:
-        raise WorkSourceError(f"作品源请求失败: HTTP {resp.status_code} {url}")
+        logger.warning(
+            "commits 概要获取失败(HTTP %s)，本仓库软降级: %s", resp.status_code, url
+        )
+        return 0, "", ""
     page = resp.json()
     if not isinstance(page, list) or not page:
         return 0, "", ""
@@ -154,10 +160,16 @@ async def _commit_summary(
     first_at = last_at
     if total > 1:
         resp_first = await client.get(url, params={"per_page": 1, "page": total})
-        resp_first.raise_for_status()
-        oldest = resp_first.json()
-        if isinstance(oldest, list) and oldest:
-            first_at = _commit_date(oldest[0])
+        if resp_first.status_code >= 400:
+            logger.warning(
+                "最早 commit 获取失败(HTTP %s)，span 按 0 计: %s",
+                resp_first.status_code,
+                url,
+            )
+        else:
+            oldest = resp_first.json()
+            if isinstance(oldest, list) and oldest:
+                first_at = _commit_date(oldest[0])
     return total, first_at, last_at
 
 
