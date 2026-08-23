@@ -21,13 +21,22 @@ from talentforge.field.risks import assess
 
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_PROFILE_PATH = _PACKAGE_ROOT / "docs" / "demo" / "profile.json"
+RUNTIME_PROFILE_PATH = Path("data/profile.json")  # 相对 cwd（data/ 已 gitignore）
 PROFILE_ENV = "TALENTFORGE_PROFILE_PATH"
 
 
 def profile_path() -> Path:
-    """画像文件路径：环境变量 TALENTFORGE_PROFILE_PATH 优先，缺省 docs/demo/profile.json。"""
+    """画像读路径：env TALENTFORGE_PROFILE_PATH > 运行时 data/profile.json > 演示 fixture。
+
+    演示 fixture（docs/demo/profile.json，git 跟踪）只作首次种子与离线演示——
+    读链允许回落到它，写链永不落它（见 save_profile）。
+    """
     env = os.environ.get(PROFILE_ENV)
-    return Path(env) if env else DEFAULT_PROFILE_PATH
+    if env:
+        return Path(env)
+    if RUNTIME_PROFILE_PATH.exists():
+        return RUNTIME_PROFILE_PATH
+    return DEFAULT_PROFILE_PATH
 
 
 def load_profile() -> Profile:
@@ -39,8 +48,13 @@ def load_profile() -> Profile:
 
 
 def save_profile(profile: Profile) -> None:
-    """把 Profile 写回画像文件（无持久层时的 profile.json 读写约定）。"""
-    path = profile_path()
+    """画像写路径：env 显式时写 env 路径，否则写运行时 data/profile.json。
+
+    git 跟踪的演示 fixture 永不写入——用户真实主张/偏好回流只落 gitignored
+    运行时文件（M5 教训：真实作品主张写入演示 fixture 曾打破契约测试）。
+    """
+    env = os.environ.get(PROFILE_ENV)
+    path = Path(env) if env else RUNTIME_PROFILE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(profile.model_dump(), ensure_ascii=False, indent=2),
