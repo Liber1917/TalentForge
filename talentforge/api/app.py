@@ -19,6 +19,7 @@ from talentforge.api.routes_profile import router as profile_router
 from talentforge.api.routes_report import router as report_router
 from talentforge.api.routes_resume import router as resume_router
 from talentforge.api.routes_sources import router as sources_router
+from talentforge.api.routes_suggest import router as suggest_router
 from talentforge.api.routes_work import router as work_router
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db
@@ -44,6 +45,7 @@ def create_app(
     - M3 真端点：/api/chat /api/claims /api/jobs /api/report /api/profile（路由内用 /api 绝对路径）
     - M4 反馈端点：/api/feedback（events POST/GET + summary，驱动偏好回流管线）
     - M5 作品端点：/api/work（fetch/artifacts/claims/dismiss，作品源→画像主张）
+    - M6 推荐端点：/api/suggest（gap→GitHub 优质 repo，24h 缓存）/api/suggest/for-job
     - M5 简历产出：GET /cv（Jinja2 A4 模板渲染，旧 /resume 302 跳转，路由先于静态挂载）
     - 静态挂载 web/ → /（无 index.html 时 404，保持挂载在最后）
     - CORS 宽松（本地工具）
@@ -91,6 +93,7 @@ def create_app(
     app.include_router(profile_router)
     app.include_router(feedback_router)
     app.include_router(sources_router)
+    app.include_router(suggest_router)
     app.include_router(work_router)
     app.include_router(resume_router)
 
