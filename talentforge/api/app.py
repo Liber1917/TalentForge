@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from talentforge.api.events import handle_events
 from talentforge.api.routes_chat import router as chat_router
 from talentforge.api.routes_claims import router as claims_router
+from talentforge.api.routes_explore import router as explore_router
 from talentforge.api.routes_feedback import router as feedback_router
 from talentforge.api.routes_jobs import router as jobs_router
 from talentforge.api.routes_profile import router as profile_router
@@ -46,6 +47,7 @@ def create_app(
     - M4 反馈端点：/api/feedback（events POST/GET + summary，驱动偏好回流管线）
     - M5 作品端点：/api/work（fetch/artifacts/claims/dismiss，作品源→画像主张）
     - M6 推荐端点：/api/suggest（gap→GitHub 优质 repo，24h 缓存）/api/suggest/for-job
+    - M7 探索端点：/api/explore（snapshot/directions/asset-brief，三口径方向卡快照）
     - M5 简历产出：GET /cv（Jinja2 A4 模板渲染，旧 /resume 302 跳转，路由先于静态挂载）
     - 静态挂载 web/ → /（无 index.html 时 404，保持挂载在最后）
     - CORS 宽松（本地工具）
@@ -95,6 +97,7 @@ def create_app(
     app.include_router(sources_router)
     app.include_router(suggest_router)
     app.include_router(work_router)
+    app.include_router(explore_router)
     app.include_router(resume_router)
 
     # 本地工具：静态资源禁缓存（JS/CSS 迭代频繁，旧缓存是"改了不生效"的头号来源）
