@@ -1,4 +1,5 @@
-"""简历产出路由（M5 spec §6 最小版）：GET /resume → Jinja2 A4 模板渲染。
+"""简历产出路由（M5 spec §6 最小版）：GET /cv → Jinja2 A4 模板渲染（旧 /resume 路径 302 跳转，
+避免与 GSD /gsd-resume-work 语义混淆——D28 命名分域）。
 
 easyCV 借鉴（docs/research/easycv-teardown.md）：数据→模板→A4→打印，
 window.print + print CSS 零依赖导出 PDF。数据聚合不走 LLM：
@@ -16,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from talentforge.api.common import format_salary, load_profile
@@ -67,8 +68,8 @@ def _salary_segment(profile: Profile) -> str:
     return format_salary(profile.salary_expectation)
 
 
-@router.get("/resume", response_class=HTMLResponse)
-def get_resume(request: Request) -> HTMLResponse:
+@router.get("/cv", response_class=HTMLResponse)
+def get_cv(request: Request) -> HTMLResponse:
     """A4 简历产出页：画像 + 作品 + active 主张聚合渲染（导出 PDF 走 window.print）。"""
     try:
         profile = load_profile()
@@ -114,3 +115,9 @@ def get_resume(request: Request) -> HTMLResponse:
         "resume.html",
         {"basics": basics, "works": works, "claims": claims},
     )
+
+
+@router.get("/resume", include_in_schema=False)
+def resume_legacy_redirect() -> RedirectResponse:
+    """旧路径兼容：/resume → /cv（302，书签友好）。"""
+    return RedirectResponse(url="/cv", status_code=302)

@@ -44,7 +44,7 @@ def create_app(
     - M3 真端点：/api/chat /api/claims /api/jobs /api/report /api/profile（路由内用 /api 绝对路径）
     - M4 反馈端点：/api/feedback（events POST/GET + summary，驱动偏好回流管线）
     - M5 作品端点：/api/work（fetch/artifacts/claims/dismiss，作品源→画像主张）
-    - M5 简历产出：GET /resume（Jinja2 A4 模板渲染，路由先于静态挂载）
+    - M5 简历产出：GET /cv（Jinja2 A4 模板渲染，旧 /resume 302 跳转，路由先于静态挂载）
     - 静态挂载 web/ → /（无 index.html 时 404，保持挂载在最后）
     - CORS 宽松（本地工具）
 

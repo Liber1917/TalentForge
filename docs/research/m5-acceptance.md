@@ -27,7 +27,7 @@ sources：作品拉取展开区（github/gitee 用户名、arxiv 作者名）/ g
 | POST /api/work/fetch {github_user: "torvalds"} | ✅ 12 仓库入库（含 commits/languages/首末时间），零警告 |
 | 信号分级 | ✅ 规则在真实数据上正确运作（见下表） |
 | POST /api/work/claims {all: true} | ✅ written: 12, skipped: 0 |
-| 浏览器 GET /resume | ✅ A4 纸面（793.7px）、12 作品 strong 排序在前、打印按钮、facts 摘要 |
+| 浏览器 GET /cv | ✅ A4 纸面（793.7px）、12 作品 strong 排序在前、打印按钮、facts 摘要 |
 | 浏览器 #/profile 作品区 | ✅ 12 张作品卡渲染 + 18 张主张卡共存 |
 
 ### 分级规则真机抽验（torvalds 数据）

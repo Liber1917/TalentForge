@@ -183,7 +183,7 @@ node --test web/tests/chat.test.mjs web/tests/jobs.test.mjs web/tests/profile.te
 
 1. 平台源页（`#/sources`）→ 展开 GitHub/Gitee 卡输入用户名（或 arXiv 卡输入作者名）→ **拉取作品**
 2. 画像页（`#/profile`）顶部"作品主张"区：查看 grade 徽章（强/普通/弱）+ 结构化事实 + 分级依据 → **入画像** / **驳回**
-3. 简历产出：`http://127.0.0.1:8420/resume` → 打印/导出 PDF（A4 排版，作品按信号强度排序）
+3. 简历产出：`http://127.0.0.1:8420/cv` → 打印/导出 PDF（A4 排版，作品按信号强度排序）
 
 ### API
 

@@ -1,4 +1,4 @@
-"""M5 Task 4 简历产出页测试：GET /resume 聚合渲染（画像姓名/技能/作品 title）、
+"""M5 Task 4 简历产出页测试：GET /cv 聚合渲染（画像姓名/技能/作品 title）、
 画像缺失占位提示、works 按 grade 排序（strong 在前）、active 主张渲染 / trial 不渲染。
 
 注入方式（同 test_api_work._make_client）：
@@ -71,7 +71,7 @@ def _write_works(tmp_path: Path, artifacts: list[WorkArtifact]) -> None:
     WorkStore(tmp_path / "artifacts.json").upsert_all(artifacts)
 
 
-# ---------- GET /resume：聚合渲染 ----------
+# ---------- GET /cv：聚合渲染 + /resume 旧路径跳转 ----------
 
 
 def test_resume_renders_profile_skills_and_works(
@@ -86,7 +86,7 @@ def test_resume_renders_profile_skills_and_works(
         ],
     )
 
-    response = client.get("/resume")
+    response = client.get("/cv")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     html = response.text
@@ -104,7 +104,7 @@ def test_resume_missing_profile_shows_placeholder(
 ) -> None:
     client = _make_client(monkeypatch, tmp_path, with_profile=False)
 
-    response = client.get("/resume")
+    response = client.get("/cv")
     assert response.status_code == 200
     assert "上传" in response.text or "暂无" in response.text
 
@@ -123,7 +123,7 @@ def test_resume_sorts_works_strong_first(monkeypatch: Any, tmp_path: Path) -> No
         ],
     )
 
-    html = client.get("/resume").text
+    html = client.get("/cv").text
     assert html.index("web-crawler") < html.index("mid-lab") < html.index("toy-cli")
 
 
@@ -133,6 +133,13 @@ def test_resume_sorts_works_strong_first(monkeypatch: Any, tmp_path: Path) -> No
 def test_resume_renders_active_claims_only(monkeypatch: Any, tmp_path: Path) -> None:
     client = _make_client(monkeypatch, tmp_path)
 
-    html = client.get("/resume").text
+    html = client.get("/cv").text
     assert ACTIVE_CLAIM in html
     assert TRIAL_CLAIM not in html
+
+
+def test_resume_legacy_path_redirects_to_cv(monkeypatch: Any, tmp_path: Path) -> None:
+    client = _make_client(monkeypatch, tmp_path, with_profile=False)
+    resp = client.get("/resume", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/cv"

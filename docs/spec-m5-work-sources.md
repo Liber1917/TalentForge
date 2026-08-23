@@ -84,7 +84,7 @@ class ArxivSource:      # 作者姓+名 → 论文列表（标题/摘要/作者/
 
 ## 6. 简历产出伴随（easyCV 借鉴，最小版）
 
-- `GET /resume` 静态页：profile + verified 作品主张 → Jinja2 A4 模板 → 打印导出 PDF（window.print + print CSS，零依赖）
+- `GET /cv` 静态页：profile + verified 作品主张 → Jinja2 A4 模板 → 打印导出 PDF（window.print + print CSS，零依赖）
 - 模板套 DESIGN.md 暖纸面体系（不抄 easyCV 蓝色主题）
 - 产出内容：basics（画像 narrative/技能）+ education + projects（作品 artifacts：repo/论文 + grade 信号）——数据从 profile + artifacts 读
 
@@ -97,4 +97,4 @@ class ArxivSource:      # 作者姓+名 → 论文列表（标题/摘要/作者/
 1. 单元：分级规则表逐条测试（R1-R8 + CCF 查表 + 短路顺序）；三源解析器（fixture XML/JSON）
 2. API：fetch/artifacts/claims/dismiss 契约 + 限流降级（mock transport）
 3. Web：作品卡渲染 + 驳回交互（node:test）
-4. 端到端：真机拉取你的 GitHub 用户名 → artifacts 入库 → claims 写画像 → 画像页作品区可见 → `/resume` 出 A4 页可打印
+4. 端到端：真机拉取你的 GitHub 用户名 → artifacts 入库 → claims 写画像 → 画像页作品区可见 → `/cv` 出 A4 页可打印
