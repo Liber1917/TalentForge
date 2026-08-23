@@ -48,7 +48,7 @@ describe("boss adapter", () => {
 
   it("maps a wapi record to the normalized card shape", () => {
     const job = mapWapiJob({
-      jobId: "abc123",
+      encryptJobId: "abc123",
       jobName: "Python 后端工程师",
       salaryDesc: "25-50K·16薪",
       brandName: "星辰科技",
@@ -63,9 +63,9 @@ describe("boss adapter", () => {
     expect(job?.url).toBe("https://www.zhipin.com/job_detail/abc123.html");
   });
 
-  it("rejects wapi records without jobId or title", () => {
+  it("rejects wapi records without encryptJobId or title", () => {
     expect(mapWapiJob({})).toBeNull();
-    expect(mapWapiJob({ jobId: "x" })).toBeNull();
+    expect(mapWapiJob({ encryptJobId: "x" })).toBeNull();
     expect(mapWapiJob({ jobName: "n" })).toBeNull();
   });
 
@@ -73,9 +73,9 @@ describe("boss adapter", () => {
     const jobs = mapWapiJobList({
       zpData: {
         jobList: [
-          { jobId: "a", jobName: "A" },
-          { jobId: "a", jobName: "A dup" },
-          { jobId: "b", jobName: "B" },
+          { encryptJobId: "a", jobName: "A" },
+          { encryptJobId: "a", jobName: "A dup" },
+          { encryptJobId: "b", jobName: "B" },
           {},
         ],
       },

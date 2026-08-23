@@ -64,14 +64,18 @@ async function harvestViaWapi(): Promise<void> {
     reportDiagnostic("wapi", { status: res.status });
     if (!res.ok) return;
     const body = (await res.json()) as Record<string, unknown>;
+    const zpData = (body.zpData ?? {}) as Record<string, unknown>;
+    const rawList = Array.isArray(zpData.jobList) ? zpData.jobList : [];
+    const mapped = mapWapiJobList(body);
     reportDiagnostic("wapi-body", {
       code: body.code,
-      listLen: Array.isArray((body.zpData as Record<string, unknown> | undefined)?.jobList)
-        ? ((body.zpData as Record<string, unknown>).jobList as unknown[]).length
-        : -1,
+      listLen: rawList.length,
+      mapped,
+      sample: rawList.length > 0 ? Object.keys(rawList[0] as object).slice(0, 25) : [],
     });
-    const fresh = mapWapiJobList(body).filter((job) => !sentUrls.has(job.url));
+    const fresh = mapped.filter((job) => !sentUrls.has(job.url));
     for (const job of fresh) sentUrls.add(job.url);
+    reportDiagnostic("wapi-post", { fresh: fresh.length });
     postJobs(fresh);
   } catch (err) {
     reportDiagnostic("wapi-error", { msg: String(err).slice(0, 120) });

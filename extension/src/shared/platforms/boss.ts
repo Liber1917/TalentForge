@@ -72,13 +72,17 @@ export function isSearchPage(url: string): boolean {
 
 /** Map a wapi job-list record to the normalized card shape. */
 export function mapWapiJob(item: Record<string, unknown>): BossJobCard | null {
-  const jobId = String(item.jobId ?? item.job_id ?? "");
+  // 实测字段（2026-08 joblist.json）：主键为 encryptJobId，无 jobId/brandName。
+  const jobId = String(item.encryptJobId ?? item.jobId ?? item.job_id ?? "");
   const title = String(item.jobName ?? item.job_name ?? item.title ?? "").trim();
   if (!jobId || !title) return null;
-  const labels = Array.isArray(item.jobLabels) ? item.jobLabels.map(String) : [];
+  const labels = [
+    ...(Array.isArray(item.jobLabels) ? item.jobLabels.map(String) : []),
+    ...(Array.isArray(item.skills) ? item.skills.map(String) : []),
+  ];
   return {
     title: title.slice(0, 120),
-    company: String(item.brandName ?? item.brand_name ?? "").slice(0, 80),
+    company: String(item.brandName ?? item.brand_name ?? item.companyName ?? "").slice(0, 80),
     location: [
       String(item.cityName ?? ""),
       String(item.areaDistrict ?? item.district ?? ""),
@@ -88,8 +92,15 @@ export function mapWapiJob(item: Record<string, unknown>): BossJobCard | null {
       .slice(0, 60),
     salary: String(item.salaryDesc ?? item.salary ?? "").slice(0, 40),
     url: `https://www.zhipin.com/job_detail/${jobId}.html`,
-    tags: labels.slice(0, 10),
-    description: String(item.jobDetail ?? "").slice(0, 500),
+    tags: [...new Set(labels)].slice(0, 10),
+    description: [
+      String(item.jobExperience ?? ""),
+      String(item.jobDegree ?? ""),
+      String(item.bossName ?? ""),
+    ]
+      .filter(Boolean)
+      .join(" · ")
+      .slice(0, 500),
   };
 }
 
