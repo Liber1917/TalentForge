@@ -16,10 +16,14 @@
    - 数量统计："共 N 个岗位 · 投 M · 观望 K"
     - 跨页联动：监听 window "job:focus" 事件（对话页决策卡点击产生），
       进入工作台时定位对应岗位；"聊聊这个岗位"反向派发 job:focus + 跳 /chat
-    - M4 反馈闭环：详情底部"我的行动"行 = 我已投递 / 我跳过了 / 记录结果
-      （原地展开 面试中/已拒/offer/无回音）三轻量按钮；已记录态显示徽章
-      "已记录：投递 08-22" + "改"回到未记录态。fixtures 模式本地 mock，
-      真模式 POST /api/feedback/events（fetch no-store，参照 sources.js）
+     - M4 反馈闭环：详情底部"我的行动"行 = 我已投递 / 我跳过了 / 记录结果
+       （原地展开 面试中/已拒/offer/无回音）三轻量按钮；已记录态显示徽章
+       "已记录：投递 08-22" + "改"回到未记录态。fixtures 模式本地 mock，
+       真模式 POST /api/feedback/events（fetch no-store，参照 sources.js）
+     - M6 信号投资循环：gap 兼容对象形态 {skill,severity,evidence}（severity
+       徽章 major=risk 色 / minor=灰）；gap 非空时"补信号"按钮展开推荐区
+       （fixtures 本地示例；真模式 POST /api/suggest/for-job 逐 gap 渲染
+       repo 推荐卡，外链新 tab；无 gaps 给"先跑决策"提示；再点收起）
     渲染函数为纯字符串输出（文本一律 esc 转义），DOM 层通过 <template> 解析
     后挂载，便于 node:test 直接断言。
    ========================================================= */
@@ -45,6 +49,11 @@ const TalentForgeJobs = (() => {
     behavior: "行为",
     system: "系统",
   };
+  /* M6 gap severity 中文（major=risk 色徽章 / minor=灰徽章） */
+  const SEVERITY_LABEL = { major: "主要", minor: "次要" };
+  const SUGGEST_NO_GAPS_HINT = "该岗位暂无 gap 分析——先在对话页跑一次决策";
+  const SUGGEST_LOADING_TEXT = "找项目中…";
+  const SUGGEST_ERROR_TEXT = "推荐失败：后端未启动";
   /* 风险命中无 why 字段时的通用知情文案（D13 知情非恐吓） */
   const DEFAULT_RISK_WHY =
     "这是你画像里记录的结构性风险点——建议在决定之前，先弄清它对工时、收入与长期成长的实际影响。";
@@ -167,6 +176,58 @@ const TalentForgeJobs = (() => {
     },
   ];
 
+  /* ---------- 推荐区离线示例（M6 spec §2.3）：镜像 /api/suggest/for-job results 形态 ---------- */
+  const LOCAL_SUGGEST_FIXTURES = [
+    {
+      skill: "Flink 流处理",
+      severity: "major",
+      suggestions: [
+        {
+          full_name: "apache/flink",
+          url: "https://github.com/apache/flink",
+          stars: 24000,
+          description: "流处理与批处理一体化的分布式计算引擎，stateful 计算 exactly-once 语义。",
+          language: "Java",
+          pushed_at: "2026-08-20T08:30:00Z",
+          why: "30 天内有推送、issues 维护得动，适合补流处理实战信号。",
+        },
+        {
+          full_name: "pyflink/pyflink-examples",
+          url: "https://github.com/pyflink/pyflink-examples",
+          stars: 890,
+          description: "PyFlink 官方示例集：wordcount / window / state 与 checkpoint 演示。",
+          language: "Python",
+          pushed_at: "2026-08-12T10:00:00Z",
+          why: "stars 适中、示例即学即用，上手成本低于读引擎源码。",
+        },
+      ],
+    },
+    {
+      skill: "K8s 容器编排",
+      severity: "minor",
+      suggestions: [
+        {
+          full_name: "kubernetes/community",
+          url: "https://github.com/kubernetes/community",
+          stars: 12000,
+          description: "Kubernetes 社区协作文档：SIG 兴趣组、贡献指南与 good first issue 入口。",
+          language: "Shell",
+          pushed_at: "2026-08-18T06:00:00Z",
+          why: "文档 PR 门槛低，是补 K8s 实践信号的最短路径。",
+        },
+        {
+          full_name: "operator-framework/operator-sdk",
+          url: "https://github.com/operator-framework/operator-sdk",
+          stars: 6500,
+          description: "构建 K8s Operator 的 SDK：脚手架生成控制器与 CRD，快速产出可展示项目。",
+          language: "Go",
+          pushed_at: "2026-08-15T09:00:00Z",
+          why: "能做出端到端 Operator demo，直接对应 JD 的容器编排经验。",
+        },
+      ],
+    },
+  ];
+
   /* 兜底骨架：与 web/partials/jobs.html 保持一致（fetch 失败时注入） */
   const FALLBACK_PARTIAL = `
 <div class="jobs-layout">
@@ -229,6 +290,24 @@ const TalentForgeJobs = (() => {
     if (Number.isNaN(d.getTime())) return "";
     const pad = (x) => String(x).padStart(2, "0");
     return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  /** ISO 时间取 YYYY-MM-DD 段（非 ISO / 空给空串）。 */
+  function fmtIsoDay(iso) {
+    const m = /^\d{4}-\d{2}-\d{2}/.exec(String(iso || ""));
+    return m ? m[0] : "";
+  }
+
+  /** gap 归一：字符串（旧 fixtures）与对象（{skill,severity,evidence}）混合数组，
+      剔除空串 / "——" 占位 / 无 skill 项。 */
+  function normalizeGaps(gap) {
+    const list = Array.isArray(gap) ? gap : [];
+    return list.filter((g) => {
+      if (g == null) return false;
+      if (typeof g === "string") return g.trim() !== "" && g !== "——";
+      if (typeof g === "object") return String(g.skill || "").trim() !== "";
+      return false;
+    });
   }
 
   function htmlToElement(html) {
@@ -367,14 +446,40 @@ const TalentForgeJobs = (() => {
       .join("");
   }
 
-  /** gap/补短板区块：能力差距 + 建议动作。 */
+  /** 单条 gap：字符串 → 旧 <li> 形态；对象 → skill 粗体 + severity 徽章 + evidence 小字。 */
+  function renderGapItem(gap) {
+    if (gap != null && typeof gap === "object") {
+      const sev = String(gap.severity || "").trim();
+      const sevBadge = SEVERITY_LABEL[sev]
+        ? `<span class="gap-sev gap-sev--${esc(sev)}">${esc(SEVERITY_LABEL[sev])}</span>`
+        : "";
+      const evidence = String(gap.evidence || "").trim();
+      return `
+            <li class="gap-item">
+              <span class="gap-item__head">
+                <strong class="gap-item__skill">${esc(gap.skill)}</strong>
+                ${sevBadge}
+              </span>
+              ${evidence ? `<span class="gap-item__evidence">${esc(evidence)}</span>` : ""}
+            </li>`;
+    }
+    return `<li>${esc(gap)}</li>`;
+  }
+
+  /** gap/补短板区块：能力差距（双形态兼容）+ 建议动作；
+      gap 非空时附"补信号"按钮 + 推荐区容器（默认隐藏，点击按钮填充）。 */
   function renderGapBlock(job) {
-    const gaps = Array.isArray(job.gap)
-      ? job.gap.filter((g) => String(g).trim() && g !== "——")
-      : [];
+    const gaps = normalizeGaps(job.gap);
     const remediation = Array.isArray(job.remediation) ? job.remediation : [];
-    const gapItems = gaps.map((g) => `<li>${esc(g)}</li>`).join("");
+    const gapItems = gaps.map(renderGapItem).join("");
     const remItems = remediation.map((r) => `<li>${esc(r)}</li>`).join("");
+    const suggestToggle = gaps.length ? `
+          <div class="job-detail__suggest-toggle">
+            <button class="btn btn--ghost btn--sm" type="button" data-action="suggest-toggle"
+                    data-job-url="${esc(job.url)}" aria-expanded="false" aria-controls="jobs-suggest-box"
+                    aria-label="为该岗位的能力差距推荐补信号项目：${esc(job.title || "")}">补信号</button>
+          </div>
+          <div class="suggest-box" id="jobs-suggest-box" data-role="suggest-box" hidden></div>` : "";
     return `
         <section class="job-detail__section job-detail__gaps" aria-label="补短板建议">
           <span class="overline">补短板</span>
@@ -387,7 +492,52 @@ const TalentForgeJobs = (() => {
             <h4 class="job-detail__sub">建议动作</h4>
             <ul class="job-detail__gaps-list">${remItems}</ul>
           </div>` : ""}
+          ${suggestToggle}
         </section>`;
+  }
+
+  /** 推荐区状态行（加载 / 失败 / 无 gap 提示）。 */
+  function renderSuggestHint(text, tone = "") {
+    const cls = tone ? ` suggest-box__hint--${tone}` : "";
+    return `<p class="suggest-box__hint${cls}">${esc(text)}</p>`;
+  }
+
+  /** 推荐卡（单 repo）：stars / 描述截断 80 / language · pushed 日期 / why 小字 / 外链"参与"。 */
+  function renderSuggestCard(item) {
+    const s = item || {};
+    const desc = clip(s.description, 80);
+    const meta = [s.language, fmtIsoDay(s.pushed_at)].filter(Boolean).join(" · ");
+    return `
+            <li class="suggest-card">
+              <div class="suggest-card__head">
+                <a class="suggest-card__name" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.full_name)}</a>
+                <span class="suggest-card__stars">★ ${esc(s.stars ?? 0)}</span>
+              </div>
+              ${desc ? `<p class="suggest-card__desc">${esc(desc)}</p>` : ""}
+              ${meta ? `<p class="suggest-card__meta">${esc(meta)}</p>` : ""}
+              ${s.why ? `<p class="suggest-card__why">${esc(s.why)}</p>` : ""}
+              <a class="suggest-card__link" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">参与 ↗</a>
+            </li>`;
+  }
+
+  /** 推荐区主体（补信号展开内容）：逐 gap 组渲染建议卡。
+      入参兼容 for-job 响应（{results} / {gaps: []}）与纯数组；空 → 无 gap 提示。 */
+  function renderSuggestBox(data) {
+    const groups = Array.isArray(data) ? data
+      : Array.isArray(data && data.results) ? data.results
+      : [];
+    if (!groups.length) {
+      return renderSuggestHint(SUGGEST_NO_GAPS_HINT);
+    }
+    return groups.map((group) => {
+      const g = group || {};
+      const cards = (Array.isArray(g.suggestions) ? g.suggestions : []).map(renderSuggestCard).join("");
+      return `
+        <section class="suggest-group">
+          <h4 class="suggest-group__skill">${esc(g.skill)}</h4>
+          ${cards || renderSuggestHint("该方向暂无推荐")}
+        </section>`;
+    }).join("");
   }
 
   /** 反馈行（M4 spec §3）：未记录态 = 三轻量按钮 + 默认隐藏 outcome 组；已记录态 = 徽章 + 改。 */
@@ -662,6 +812,47 @@ const TalentForgeJobs = (() => {
     return res.json();
   }
 
+  /** 真模式 POST /api/suggest/for-job（fetch no-store，同 postFeedbackEvent 模式）。 */
+  async function postSuggestForJob(jobUrl) {
+    const res = await fetch("/api/suggest/for-job", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ job_url: jobUrl }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  /** 补信号开合（M6 spec §2.3）：展开 → fixtures 本地示例 / 真模式 for-job 推荐；
+      加载态"找项目中…"、失败"后端未启动"；再点收起。 */
+  async function toggleSuggest(btn) {
+    const section = btn.closest(".job-detail__gaps");
+    const box = section && section.querySelector("[data-role='suggest-box']");
+    if (!box) return;
+    if (!box.hidden) {
+      box.hidden = true;
+      box.innerHTML = "";
+      btn.setAttribute("aria-expanded", "false");
+      return;
+    }
+    box.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    if (typeof TalentForgeApi === "undefined" || TalentForgeApi.USE_FIXTURES) {
+      box.innerHTML = renderSuggestBox(LOCAL_SUGGEST_FIXTURES);
+      return;
+    }
+    box.innerHTML = renderSuggestHint(SUGGEST_LOADING_TEXT);
+    try {
+      const job = currentJob();
+      const data = await postSuggestForJob(btn.dataset.jobUrl || (job && job.url) || "");
+      box.innerHTML = renderSuggestBox(data);
+    } catch (err) {
+      console.warn("补信号推荐失败：", err);
+      box.innerHTML = renderSuggestHint(SUGGEST_ERROR_TEXT, "error");
+    }
+  }
+
   /** 记录反馈（spec §3）：fixtures 本地 mock；真模式 POST 后更新徽章。 */
   async function recordFeedback(job, verdict, outcome = null) {
     if (!job || !job.url) return;
@@ -756,6 +947,12 @@ const TalentForgeJobs = (() => {
       evt.preventDefault();
       const job = currentJob();
       if (job) chatAboutJob(job);
+      return;
+    }
+    const suggestBtn = evt.target.closest("[data-action='suggest-toggle']");
+    if (suggestBtn) {
+      evt.preventDefault();
+      toggleSuggest(suggestBtn);
       return;
     }
     const decidedBtn = evt.target.closest("[data-action='feedback-decided']");
@@ -861,7 +1058,12 @@ const TalentForgeJobs = (() => {
     EMPTY_FILTER_HINT,
     FEEDBACK_VERDICT_LABEL,
     LOCAL_FIXTURE_JOBS,
+    LOCAL_SUGGEST_FIXTURES,
     OUTCOME_LABEL,
+    SEVERITY_LABEL,
+    SUGGEST_ERROR_TEXT,
+    SUGGEST_LOADING_TEXT,
+    SUGGEST_NO_GAPS_HINT,
     clip,
     collectCities,
     countStats,
@@ -869,15 +1071,21 @@ const TalentForgeJobs = (() => {
     filterJobs,
     fmtAt,
     fmtDay,
+    fmtIsoDay,
+    normalizeGaps,
     renderEmptyState,
     renderEvidenceChain,
     renderFeedbackRow,
     renderGapBlock,
+    renderGapItem,
     renderJobDetail,
     renderJobList,
     renderJobRow,
     renderRiskNote,
     renderRiskTag,
+    renderSuggestBox,
+    renderSuggestCard,
+    renderSuggestHint,
     renderVerdictBadge,
     init,
   };

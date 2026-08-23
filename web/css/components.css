@@ -1211,3 +1211,141 @@
   .work-card__meta { margin-inline-start: 0; }
   .work-section__count { margin-inline-start: 0; }
 }
+
+/* ===================== 推荐区（M6：gap 补信号 → 项目推荐卡） ===================== */
+
+/* gap 对象形态条目：skill 粗体 + severity 徽章一行，evidence 小字次行 */
+.gap-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.gap-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.gap-item__skill {
+  font-size: var(--fs-body-sm);
+  color: var(--text-primary);
+}
+.gap-item__evidence {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--text-tertiary);
+}
+
+/* severity 徽章：major 复用 risk 语义色 / minor 中性灰（同 status-pill 视觉） */
+.gap-sev {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+}
+.gap-sev--major { color: var(--risk); border: 1px solid var(--risk); background-color: var(--risk-bg); }
+.gap-sev--minor { color: var(--text-tertiary); border: 1px solid var(--border-strong); background-color: var(--surface-sand); }
+
+/* 补信号按钮行（gap 区块底部） */
+.job-detail__suggest-toggle { margin-top: var(--space-2); }
+
+/* 推荐区容器：默认 hidden（[hidden] 显式覆盖 display，同 feedback-outcomes） */
+.suggest-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-inner);
+  background-color: var(--surface-sand);
+}
+.suggest-box[hidden] { display: none; }
+
+/* 状态行：加载（衬线斜体，书房语气）/ 失败（risk 色）/ 无 gap 提示 */
+.suggest-box__hint {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  color: var(--text-tertiary);
+}
+.suggest-box__hint--loading { font-style: italic; }
+.suggest-box__hint--error { color: var(--risk); }
+
+/* gap 组：skill 小标题 + 建议卡列表 */
+.suggest-group { display: flex; flex-direction: column; gap: var(--space-2); }
+.suggest-group__skill {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.suggest-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 推荐 repo 卡：name 等宽 + stars 右置 / desc / meta（language · pushed）/ why 小字 */
+.suggest-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-inner);
+  background-color: var(--surface-secondary);
+}
+.suggest-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.suggest-card__name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--accent);
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+.suggest-card__name:hover { text-decoration: underline; }
+.suggest-card__stars {
+  margin-inline-start: auto;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.suggest-card__desc {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-primary);
+}
+.suggest-card__meta {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+}
+.suggest-card__why {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--text-tertiary);
+}
+.suggest-card__link {
+  align-self: flex-start;
+  font-size: var(--fs-caption);
+  color: var(--accent);
+  text-decoration: none;
+}
+.suggest-card__link:hover { text-decoration: underline; }
+
+/* ---------- 推荐区移动端（375 档）：stars 徽章换行左对齐 ---------- */
+@media (max-width: 639px) {
+  .suggest-card__stars { margin-inline-start: 0; }
+}

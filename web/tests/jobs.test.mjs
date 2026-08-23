@@ -271,3 +271,116 @@ test("partials/jobs.html 含筛选条/双栏/状态容器的骨架", () => {
   assert.match(partial, /id="jobs-status"/);
   assert.match(partial, /id="jobs-count"/);
 });
+
+/* ---------- M6 信号投资（gap 对象形态 + 补信号推荐区） ---------- */
+
+test("renderGapBlock 对象形态 gap：skill 粗体/severity 徽章/evidence 小字 + 补信号按钮", () => {
+  const job = {
+    ...FIXTURE[0],
+    gap: [
+      { skill: "Kubernetes", severity: "major", evidence: "JD 要求 K8s 部署经验，画像无容器编排记录" },
+      { skill: "压测调优", severity: "minor", evidence: "JD 提到全链路压测，画像无性能调优记录" },
+    ],
+  };
+  const html = Jobs.renderGapBlock(job);
+  assert.match(html, /gap-item__skill/);
+  assert.match(html, /<strong[^>]*>Kubernetes<\/strong>/);
+  assert.match(html, /gap-sev gap-sev--major/);
+  assert.match(html, /gap-sev gap-sev--minor/);
+  assert.match(html, /JD 要求 K8s 部署经验，画像无容器编排记录/);
+  assert.match(html, /gap-item__evidence/);
+  /* 补信号按钮 + 默认隐藏的推荐区容器 */
+  assert.match(html, /data-action="suggest-toggle"/);
+  assert.match(html, /data-job-url="https:\/\/www\.zhipin\.com\/job_detail\/data_1006\.html"/);
+  assert.match(html, /data-role="suggest-box"/);
+  const box = html.match(/<div[^>]*data-role="suggest-box"[^>]*>/);
+  assert.ok(box, "应含 suggest-box 容器");
+  assert.match(box[0], /hidden/);
+  assert.match(html, /aria-expanded="false"/);
+});
+
+test("renderGapBlock 字符串数组（fixtures 旧形态）：保持 <li> 兼容渲染", () => {
+  const html = Jobs.renderGapBlock(FIXTURE[2]); /* gap: ["K8s 容器编排", "高并发压测"] */
+  assert.match(html, /<li>K8s 容器编排<\/li>/);
+  assert.match(html, /<li>高并发压测<\/li>/);
+  assert.doesNotMatch(html, /gap-item__skill/);
+  /* gap 非空 → 有补信号按钮；空 gap（"——" 过滤后为空）→ 无按钮 */
+  assert.match(html, /suggest-toggle/);
+  assert.doesNotMatch(Jobs.renderGapBlock(FIXTURE[7]), /suggest-toggle/);
+});
+
+test("renderJobDetail 对象形态 gap 联动推荐区容器（默认隐藏）", () => {
+  const job = { ...FIXTURE[0], gap: [{ skill: "Kubernetes", severity: "major", evidence: "JD 要求" }] };
+  const html = Jobs.renderJobDetail(job);
+  assert.match(html, /gap-sev--major/);
+  assert.match(html, /data-role="suggest-box"/);
+  const box = html.match(/<div[^>]*data-role="suggest-box"[^>]*>/);
+  assert.ok(box);
+  assert.match(box[0], /hidden/);
+});
+
+test("renderSuggestBox fixtures：建议卡含 stars/why/meta/外链 noopener", () => {
+  const html = Jobs.renderSuggestBox(Jobs.LOCAL_SUGGEST_FIXTURES);
+  assert.match(html, /suggest-group__skill/);
+  assert.match(html, /suggest-card/);
+  assert.match(html, /suggest-card__stars/);
+  assert.match(html, /★ \d+/);
+  assert.match(html, /suggest-card__why/);
+  assert.match(html, /suggest-card__meta/);
+  assert.match(html, /\d{4}-\d{2}-\d{2}/);
+  assert.match(html, /target="_blank" rel="noopener/);
+  assert.match(html, />参与 ↗</);
+});
+
+test("renderSuggestBox 兼容 for-job 响应形态；无 gaps 给提示文案", () => {
+  assert.match(Jobs.renderSuggestBox({ ok: true, results: Jobs.LOCAL_SUGGEST_FIXTURES }), /suggest-card/);
+  assert.match(Jobs.renderSuggestBox({ ok: true, gaps: [] }), /该岗位暂无 gap 分析/);
+  assert.match(Jobs.renderSuggestBox([]), /先在对话页跑一次决策/);
+});
+
+test("renderSuggestBox description 超 80 字截断", () => {
+  const long = "甲".repeat(100);
+  const html = Jobs.renderSuggestBox([{
+    skill: "S",
+    severity: "major",
+    suggestions: [{ full_name: "a/b", url: "https://github.com/a/b", stars: 1, description: long, language: "", pushed_at: "", why: "" }],
+  }]);
+  assert.ok(html.includes("甲".repeat(80)), "应保留前 80 字");
+  assert.ok(!html.includes("甲".repeat(81)), "应截断 80 字之后");
+  assert.match(html, /…/);
+});
+
+test("renderSuggestHint 加载/失败文案（失败用 risk 语义类）", () => {
+  assert.match(Jobs.renderSuggestHint("找项目中…"), /找项目中…/);
+  assert.match(Jobs.renderSuggestHint("找项目中…"), /suggest-box__hint"/);
+  const err = Jobs.renderSuggestHint("推荐失败：后端未启动", "error");
+  assert.match(err, /推荐失败：后端未启动/);
+  assert.match(err, /suggest-box__hint--error/);
+});
+
+test("XSS：推荐区 skill/description/why 与 gap evidence 注入一律转义", () => {
+  const evil = [{
+    skill: '<script>alert(1)</script>',
+    severity: "major",
+    evidence: '"><img src=x onerror=alert(2)>',
+    suggestions: [{
+      full_name: 'evil/repo"><img src=x onerror=alert(3)>',
+      url: "https://github.com/evil/repo",
+      stars: 120,
+      description: '<img src=x onerror=alert(4)>',
+      language: "Python",
+      pushed_at: "2026-08-01T00:00:00Z",
+      why: "<b>bold</b>",
+    }],
+  }];
+  const html = Jobs.renderSuggestBox(evil);
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /&lt;b&gt;bold&lt;\/b&gt;/);
+  /* gap 区块对象形态同样转义 */
+  const gapHtml = Jobs.renderGapBlock({ ...FIXTURE[0], gap: evil });
+  assert.doesNotMatch(gapHtml, /<script>/);
+  assert.doesNotMatch(gapHtml, /<img src=x/);
+  assert.match(gapHtml, /&lt;script&gt;/);
+});
