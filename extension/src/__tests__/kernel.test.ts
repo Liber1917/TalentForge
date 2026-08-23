@@ -74,14 +74,17 @@ describe("kernel", () => {
   });
 
   it("emits a search event on navigation to a search page", () => {
+    vi.useFakeTimers();
     const sendMessage = installChromeMock();
     const collector = startCollector(makeAdapter());
     history.pushState({}, "", "/search?q=vue");
+    vi.advanceTimersByTime(2_000);
     expect(sendMessage).toHaveBeenCalledTimes(1);
     const [message] = sendMessage.mock.calls[0];
     expect(message.data.type).toBe("search");
     expect(message.data.metadata.query).toBe("vue");
     collector.dispose();
+    vi.useRealTimers();
   });
 
   it("dispose removes listeners so no further events are emitted", () => {

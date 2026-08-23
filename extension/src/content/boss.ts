@@ -83,6 +83,9 @@ function harvestDom(): void {
   postJobs(fresh);
 }
 
+// SPA navigation watch: content scripts run in an isolated world — patching
+// history.pushState here does NOT intercept the page's own SPA navigation
+// (the page world calls its unpatched original). Poll location.href instead.
 let currentUrl = window.location.href;
 function onUrlChanged(): void {
   const next = window.location.href;
@@ -93,6 +96,8 @@ function onUrlChanged(): void {
     harvestDom();
   }
 }
+window.setInterval(onUrlChanged, 1_500);
+window.addEventListener("popstate", onUrlChanged);
 
 // ---- wiring ----
 if (isSearchPage(window.location.href)) {
@@ -100,14 +105,5 @@ if (isSearchPage(window.location.href)) {
   harvestDom();
 }
 window.addEventListener("scroll", () => harvestDom(), { passive: true });
-window.addEventListener("popstate", onUrlChanged);
-for (const method of ["pushState", "replaceState"] as const) {
-  const original = history[method].bind(history);
-  history[method] = function patched(...args: Parameters<History["pushState"]>) {
-    const result = original.apply(this, args);
-    onUrlChanged();
-    return result;
-  };
-}
 
 (globalThis as Record<string, unknown>).__talentforge_boss = true;

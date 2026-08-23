@@ -10,7 +10,9 @@ export interface Collector {
   dispose(): void;
 }
 
-type HistoryMethod = "pushState" | "replaceState";
+// SPA URL watch: isolated-world pushState patches don't intercept the page's
+// own SPA navigation (the page world calls its unpatched original), so poll.
+const URL_POLL_MS = 1_500;
 
 function sendMessage(msg: unknown): void {
   try {
@@ -48,7 +50,6 @@ export function startCollector(adapter: PlatformAdapter): Collector {
   let currentUrl = win.location.href;
   let scrollTimer: number | null = null;
   let lastScrollAt = 0;
-  const originalHistoryMethods = new Map<HistoryMethod, History["pushState"]>();
 
   const buildEvent = (
     type: string,
@@ -123,35 +124,19 @@ export function startCollector(adapter: PlatformAdapter): Collector {
     handleUrlChange();
   };
 
-  const patchHistoryMethod = (method: HistoryMethod): void => {
-    const original = history[method].bind(history);
-    originalHistoryMethods.set(method, history[method]);
-    history[method] = function patched(
-      this: History,
-      ...args: Parameters<History["pushState"]>
-    ): ReturnType<History["pushState"]> {
-      const result = original.apply(this, args);
-      handleUrlChange();
-      return result;
-    };
-  };
+  const urlPollTimer = win.setInterval(handleUrlChange, URL_POLL_MS);
 
   doc.addEventListener("click", handleClick);
   win.addEventListener("scroll", handleScroll, { passive: true });
   win.addEventListener("popstate", handlePopState);
-  patchHistoryMethod("pushState");
-  patchHistoryMethod("replaceState");
 
   const dispose = (): void => {
     doc.removeEventListener("click", handleClick);
     win.removeEventListener("scroll", handleScroll);
     win.removeEventListener("popstate", handlePopState);
+    win.clearInterval(urlPollTimer);
     if (scrollTimer !== null) win.clearTimeout(scrollTimer);
     scrollTimer = null;
-    for (const [method, original] of originalHistoryMethods) {
-      history[method] = original;
-    }
-    originalHistoryMethods.clear();
   };
 
   return { dispose };
