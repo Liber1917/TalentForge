@@ -22,8 +22,8 @@ class NarrativeIdentity(BaseModel):
 
 
 class ClaimSource(BaseModel):
-    """证据来源：简历段落/对话轮次/反馈事件/行为。"""
-    kind: Literal["resume", "dialogue", "feedback", "behavior", "system"]
+    """证据来源：简历段落/对话轮次/反馈事件/行为/作品（M5 work 域）。"""
+    kind: Literal["resume", "dialogue", "feedback", "behavior", "system", "work"]
     ref: str = ""
 
 class NarrativeClaim(BaseModel):

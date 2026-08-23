@@ -18,6 +18,7 @@ from talentforge.api.routes_jobs import router as jobs_router
 from talentforge.api.routes_profile import router as profile_router
 from talentforge.api.routes_report import router as report_router
 from talentforge.api.routes_sources import router as sources_router
+from talentforge.api.routes_work import router as work_router
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db
 
@@ -41,6 +42,7 @@ def create_app(
     - POST /api/events → 复用 handle_events 纯函数（幂等契约不变），ok=False 时返回 400
     - M3 真端点：/api/chat /api/claims /api/jobs /api/report /api/profile（路由内用 /api 绝对路径）
     - M4 反馈端点：/api/feedback（events POST/GET + summary，驱动偏好回流管线）
+    - M5 作品端点：/api/work（fetch/artifacts/claims/dismiss，作品源→画像主张）
     - 静态挂载 web/ → /（无 index.html 时 404，保持挂载在最后）
     - CORS 宽松（本地工具）
 
@@ -87,6 +89,7 @@ def create_app(
     app.include_router(profile_router)
     app.include_router(feedback_router)
     app.include_router(sources_router)
+    app.include_router(work_router)
 
     # 本地工具：静态资源禁缓存（JS/CSS 迭代频繁，旧缓存是"改了不生效"的头号来源）
     app.mount(
