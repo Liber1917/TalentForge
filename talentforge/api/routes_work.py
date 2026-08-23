@@ -2,6 +2,7 @@
 POST /api/work/claims、POST /api/work/dismiss。
 
 fetch 并发调三源（单源 WorkSourceError → warnings 降级，不阻断其他源），
+入库前对 github strong 候选跑内容探针（D29：documentation 强降 normal），
 统一 upsert 进 WorkStore（模块级 ARTIFACTS_PATH 引用，测试可 monkeypatch）。
 claims 把 artifact 生成 active 主张写入画像（spec §1.3：state="active" +
 sources[0]={kind:"work", ref} + evidence_count=1，grade→confidence 映射；
@@ -11,23 +12,28 @@ sources[0]={kind:"work", ref} + evidence_count=1，grade→confidence 映射；
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Coroutine
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from talentforge.api.common import claim_id_for, load_profile, save_profile
 from talentforge.domain.profile import ClaimSource, NarrativeClaim, Profile
 from talentforge.domain.work import WorkArtifact
+from talentforge.llm.client import LLMClient
+from talentforge.sources.content_probe import apply_probe_to_artifact, probe_content
 from talentforge.sources.work_sources import (
     ArxivSource,
-    GitHubSource,
     GiteeSource,
+    GitHubSource,
     WorkSourceError,
 )
 from talentforge.work import store as work_store
 from talentforge.work.store import WorkStore
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["work"])
 
@@ -95,12 +101,38 @@ def _to_claim(artifact: WorkArtifact) -> NarrativeClaim:
     )
 
 
+async def _apply_content_probe(
+    artifacts: list[WorkArtifact], llm: LLMClient
+) -> list[WorkArtifact]:
+    """github strong 候选逐条跑内容探针并联动分级（D29）；单条失败跳过不阻断。
+
+    probe_content 自身软失败已返回 None（未配置/网络/解析），此处 try 仅兜
+    注入替身/实现缺陷抛错；降级映射在 apply_probe_to_artifact 纯函数内
+    （LLM 永不直接定级）。
+    """
+    probed: list[WorkArtifact] = []
+    for artifact in artifacts:
+        if artifact.platform != "github" or artifact.grade != "strong":
+            probed.append(artifact)
+            continue
+        full_name = artifact.artifact_id.split(":", 1)[-1]
+        try:
+            probe = await probe_content(full_name, llm)
+        except Exception as exc:
+            logger.warning("内容探针异常，跳过 %s: %s", artifact.artifact_id, exc)
+            probe = None
+        probed.append(apply_probe_to_artifact(artifact, probe))
+    return probed
+
+
 @router.post("/api/work/fetch")
-async def fetch_works(body: WorkFetchRequest) -> dict:
+async def fetch_works(body: WorkFetchRequest, request: Request) -> dict:
     """三源并发拉取 + 统一入库；单源 WorkSourceError 记 warnings 不阻断。
 
     total_fetched = 本次成功拉取的 artifact 总数（跨源合并）；
-    added = WorkStore.upsert_all 返回的新增条数（已存在按更新计）。
+    added = WorkStore.upsert_all 返回的新增条数（已存在按更新计）；
+    入库前对 github strong 候选跑内容探针（D29），降级结果直接入库
+    （added 计数语义不变）。
     """
     tasks: list[tuple[str, Coroutine[Any, Any, list[WorkArtifact]]]] = []
     if body.github_user:
@@ -122,6 +154,7 @@ async def fetch_works(body: WorkFetchRequest) -> dict:
             else:
                 artifacts.extend(result)
 
+    artifacts = await _apply_content_probe(artifacts, request.app.state.llm)
     added = WorkStore(work_store.ARTIFACTS_PATH).upsert_all(artifacts)
     return {
         "ok": True,

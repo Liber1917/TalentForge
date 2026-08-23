@@ -1189,6 +1189,12 @@
   line-height: var(--lh-caption);
   color: var(--text-tertiary);
 }
+.work-card__probe {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--text-tertiary);
+}
 .work-card__actions {
   display: flex;
   flex-wrap: wrap;

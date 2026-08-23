@@ -403,3 +403,69 @@ test("partials/profile.html 与 FALLBACK_PARTIAL 含独立 work-section 骨架�
     );
   }
 });
+
+/* ---------- 内容探针行（D29） ---------- */
+
+test("renderWorkCard facts.content_probe 存在时输出探针小字行（类型中文 + summary）", () => {
+  const artifact = {
+    ...WORK.artifacts[0],
+    grade: "normal",
+    grade_reasons: ["R3: 持续 commit ≥ 6 个月", "R9: 内容探针判定资料收集型（证据：roadmaps/）"],
+    facts: {
+      ...WORK.artifacts[0].facts,
+      content_probe: {
+        content_type: "documentation",
+        confidence: 0.85,
+        summary: "培训资料与学习路线收集",
+        evidence: ["roadmaps/"],
+      },
+    },
+  };
+  const html = Profile.renderWorkCard(artifact, false);
+  assert.match(html, /work-card__probe/);
+  assert.match(html, /探针：资料收集·培训资料与学习路线收集/);
+  /* 小字行位于 facts 摘要之后、grade_reasons 之前 */
+  assert.ok(html.indexOf("Python · 142 commits") < html.indexOf("work-card__probe"));
+  assert.ok(html.indexOf("work-card__probe") < html.indexOf("R3:"));
+
+  const plain = Profile.renderWorkCard(WORK.artifacts[0], false);
+  assert.doesNotMatch(plain, /work-card__probe/);
+  assert.doesNotMatch(plain, /探针：/);
+});
+
+test("探针行类型中文映射齐全；缺 summary 不留悬空分隔符", () => {
+  const map = {
+    engineering: "工程实现",
+    research: "研究项目",
+    documentation: "资料收集",
+    coursework: "课程作业",
+    mixed: "混合",
+  };
+  for (const [type, label] of Object.entries(map)) {
+    const html = Profile.renderWorkCard({
+      ...WORK.artifacts[0],
+      facts: { ...WORK.artifacts[0].facts, content_probe: { content_type: type, summary: "一句话" } },
+    }, false);
+    assert.match(html, new RegExp(`探针：${label}·一句话`), `${type} 应映射为 ${label}`);
+  }
+  const noSummary = Profile.renderWorkCard({
+    ...WORK.artifacts[0],
+    facts: { ...WORK.artifacts[0].facts, content_probe: { content_type: "mixed" } },
+  }, false);
+  assert.match(noSummary, /探针：混合</);
+  assert.doesNotMatch(noSummary, /探针：混合·/);
+});
+
+test("探针行 summary/类型值含脚本一律转义（XSS）", () => {
+  const evil = Profile.renderWorkCard({
+    ...WORK.artifacts[0],
+    facts: {
+      ...WORK.artifacts[0].facts,
+      content_probe: { content_type: '<script>alert(1)</script>', summary: '<img src=x onerror=alert(2)>' },
+    },
+  }, false);
+  assert.match(evil, /&lt;script&gt;/);
+  assert.doesNotMatch(evil, /<script>/);
+  assert.match(evil, /&lt;img/);
+  assert.doesNotMatch(evil, /<img src=x/);
+});

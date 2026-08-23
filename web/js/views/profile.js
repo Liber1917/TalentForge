@@ -568,6 +568,14 @@ const TalentForgeProfile = (() => {
   };
   const WORK_PLATFORM_LABEL = { github: "GitHub", gitee: "Gitee", arxiv: "arXiv" };
   const WORK_KIND_LABEL = { repo: "仓库", paper: "论文" };
+  /* 内容探针类型中文映射（D29）：facts.content_probe.content_type → 展示名 */
+  const PROBE_TYPE_LABEL = {
+    engineering: "工程实现",
+    research: "研究项目",
+    documentation: "资料收集",
+    coursework: "课程作业",
+    mixed: "混合",
+  };
   const WORK_EMPTY = "还没有可校对的作品——去平台源页输入 GitHub/Gitee 用户名或 arXiv 作者名拉取";
 
   function workGradePill(grade) {
@@ -599,6 +607,15 @@ const TalentForgeProfile = (() => {
     ].filter(Boolean);
   }
 
+  /** 内容探针小字行（D29）：facts.content_probe → "探针：{类型中文}·{summary}"。 */
+  function workProbeLine(facts) {
+    const probe = facts && typeof facts.content_probe === "object" ? facts.content_probe : null;
+    if (!probe) return "";
+    const label = PROBE_TYPE_LABEL[probe.content_type] || String(probe.content_type || "");
+    const summary = String(probe.summary || "").trim();
+    return `<p class="work-card__probe">探针：${esc(label)}${summary ? `·${esc(summary)}` : ""}</p>`;
+  }
+
   /** 单条作品卡：grade 徽章 + 标题外链 + facts 摘要 + grade_reasons + 入画像/驳回。 */
   function renderWorkCard(artifact, claimed) {
     if (!artifact || typeof artifact !== "object") return "";
@@ -623,6 +640,7 @@ const TalentForgeProfile = (() => {
             <span class="work-card__meta">${esc(platform)}${kindLabel ? ` · ${esc(kindLabel)}` : ""}</span>
           </header>
           ${factsHtml ? `<p class="work-card__facts">${factsHtml}</p>` : ""}
+          ${workProbeLine(artifact.facts)}
           ${reasonsHtml ? `<p class="work-card__reasons">${reasonsHtml}</p>` : ""}
           <footer class="work-card__actions">
             ${claimCtl}
@@ -1023,6 +1041,7 @@ const TalentForgeProfile = (() => {
     renderWorkSection,
     workFactsSummary,
     workGradePill,
+    workProbeLine,
     init,
   };
 })();

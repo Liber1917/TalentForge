@@ -89,15 +89,27 @@ def _fake_source(artifacts: list[WorkArtifact] | None = None, error: Exception |
 def _make_client(
     monkeypatch: Any, tmp_path: Path, *, with_demo_profile: bool = False
 ) -> TestClient:
-    """tmp 画像 + tmp 作品库 + 内存库；with_demo_profile=True 时从 demo 拷贝画像。"""
+    """tmp 画像 + tmp 作品库 + 内存库；with_demo_profile=True 时从 demo 拷贝画像。
+
+    内容探针（D29）同样不打真实网络/LLM：默认以 noop 探针替代（恒 None 不
+    降级，本文件只测编排；探针联动在 test_content_probe.py 覆盖）。
+    """
     profile_path = tmp_path / "profile.json"
     if with_demo_profile:
         shutil.copy(DEFAULT_PROFILE_PATH, profile_path)
     monkeypatch.setenv("TALENTFORGE_PROFILE_PATH", str(profile_path))
     monkeypatch.delenv("TALENTFORGE_ARTIFACTS_PATH", raising=False)
     monkeypatch.setattr(work_store, "ARTIFACTS_PATH", tmp_path / "artifacts.json")
+    monkeypatch.setattr(routes_work, "probe_content", _noop_probe)
     conn = init_db(":memory:", check_same_thread=False)
     return TestClient(create_app(conn=conn))
+
+
+async def _noop_probe(
+    full_name: str, llm: Any, transport: Any = None
+) -> dict[str, Any] | None:
+    """无操作探针：恒返回 None（不降级），保持老用例与探针解耦。"""
+    return None
 
 
 def _fetch(client: TestClient, body: dict) -> dict:
