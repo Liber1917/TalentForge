@@ -68,10 +68,47 @@ def _artifact(aid: str = "github:alice/proj", **overrides: Any) -> WorkArtifact:
 # ---------- 分级规则表：grade_repo ----------
 
 
-def test_r1_fork_short_circuits_to_weak_even_with_many_commits() -> None:
-    grade, reasons = grade_repo(_repo_facts(is_fork=True, commits=500, span_days=400))
+def test_r1_fork_zero_own_commits_is_weak_even_with_many_total() -> None:
+    # fork 后零增量（或增量数据缺失按 0 保守）→ weak：收藏/抄壳
+    grade, reasons = grade_repo(
+        _repo_facts(is_fork=True, commits=500, span_days=400, own_commits=0, own_span_days=0)
+    )
     assert grade == "weak"
     assert any(r.startswith("R1:") for r in reasons)
+
+
+def test_r1_fork_without_own_fields_defaults_conservative_zero() -> None:
+    # 旧数据无 own_commits 字段 → 保守按 0 → weak
+    grade, reasons = grade_repo(_repo_facts(is_fork=True, commits=500, span_days=400))
+    assert grade == "weak"
+    assert "R1:" in reasons[1] if len(reasons) > 1 else True
+
+
+def test_r1_fork_with_own_commits_measured_by_increment() -> None:
+    # vitfly 场景：毕设 fork，增量 300 commits / 82 天 → R3b 高密度持续 → strong
+    grade, reasons = grade_repo(
+        _repo_facts(is_fork=True, commits=500, span_days=400, own_commits=300, own_span_days=82)
+    )
+    assert grade == "strong"
+    assert any(r.startswith("R1: fork 后自主演进") for r in reasons)
+    assert any(r.startswith("R3b:") for r in reasons)
+
+
+def test_r1_fork_moderate_own_commits_is_normal() -> None:
+    # fork 后 20 commits / 30 天 → 不短路，缺省 normal
+    grade, _ = grade_repo(
+        _repo_facts(is_fork=True, commits=500, span_days=400, own_commits=20, own_span_days=30)
+    )
+    assert grade == "normal"
+
+
+def test_r1_fork_few_own_commits_is_weak() -> None:
+    # fork 后增量 <10 → R2 weak（课程作业概率）
+    grade, reasons = grade_repo(
+        _repo_facts(is_fork=True, commits=500, own_commits=5, own_span_days=10)
+    )
+    assert grade == "weak"
+    assert any(r.startswith("R2:") for r in reasons)
 
 
 def test_r2_few_commits_is_weak() -> None:

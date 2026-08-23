@@ -131,9 +131,13 @@ async def _languages(client: httpx.AsyncClient, url: str) -> dict[str, int]:
 
 
 async def _commit_summary(
-    client: httpx.AsyncClient, api_base: str, full_name: str, rate_limit_msg: str
+    client: httpx.AsyncClient,
+    api_base: str,
+    full_name: str,
+    rate_limit_msg: str,
+    since: str = "",
 ) -> tuple[int, str, str]:
-    """(commits 总数, 首条时间, 最新时间)。
+    """(commits 总数, 首条时间, 最新时间)；since 非空时只统计该时刻之后的提交。
 
     per_page=1 列表第一条 = 最新 commit；Link header rel="last" 页码 = 总数
     （无 Link = 1 条）；页码 == 总数 时取该页即最早一条。
@@ -142,7 +146,10 @@ async def _commit_summary(
     分级保守化）；限流(403/429)仍按源级错误上抛。
     """
     url = f"{api_base}/repos/{full_name}/commits"
-    resp = await client.get(url, params={"per_page": 1})
+    params: dict[str, Any] = {"per_page": 1}
+    if since:
+        params["since"] = since
+    resp = await client.get(url, params=params)
     if resp.status_code == 409:
         return 0, "", ""  # 空仓库无 commits
     if resp.status_code in (403, 429):
@@ -159,7 +166,10 @@ async def _commit_summary(
     total = _last_page_from_link(resp.headers.get("link", ""))
     first_at = last_at
     if total > 1:
-        resp_first = await client.get(url, params={"per_page": 1, "page": total})
+        since_params: dict[str, Any] = {"per_page": 1, "page": total}
+        if since:
+            since_params["since"] = since
+        resp_first = await client.get(url, params=since_params)
         if resp_first.status_code >= 400:
             logger.warning(
                 "最早 commit 获取失败(HTTP %s)，span 按 0 计: %s",
@@ -186,7 +196,7 @@ async def _repo_facts(
     language = str(repo.get("language") or "")
     if not language and languages:
         language = max(languages, key=lambda k: languages[k])
-    return {
+    facts: dict[str, Any] = {
         "stars": int(repo.get("stargazers_count") or 0),
         "forks": int(repo.get("forks_count") or 0),
         "is_fork": is_fork,
@@ -196,6 +206,17 @@ async def _repo_facts(
         "span_days": _span_days(first_at, last_at),
         "pushed_at": str(repo.get("pushed_at") or ""),
     }
+    if is_fork:
+        # fork 增量度量（R1 修订依据）：fork(created_at) 之后的提交总量与首末跨度。
+        # 不用 author 过滤——提交 email 未关联 GitHub 账号会漏算（实测毕设仓库
+        # email=user@vitfly 只匹配 2/300）；since 法会含少量 merge 上游提交（保守高估）。
+        since = str(repo.get("created_at") or "")
+        own_commits, own_first, own_last = await _commit_summary(
+            client, api_base, full_name, rate_limit_msg, since=since
+        )
+        facts["own_commits"] = own_commits
+        facts["own_span_days"] = _span_days(own_first, own_last)
+    return facts
 
 
 def _repo_artifact(

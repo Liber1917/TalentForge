@@ -81,14 +81,18 @@ def _dominant_language(languages: dict[str, int]) -> tuple[str, float]:
 
 
 def grade_repo(facts: dict[str, Any]) -> tuple[str, list[str]]:
-    """仓库分级（R1/R2/R3/R7/R8）：返回 (grade, reasons)，weak 命中即短路。
+    """仓库分级（R1/R2/R3/R3b/R7/R8）：返回 (grade, reasons)，weak 命中即短路。
 
-    R1 is_fork → weak（fork 无原创成本，直接降权）；
-    R2 commits<10 → weak（课程作业概率大）；
-    R3 持续 commit ≥6 个月 → strong（长期投入难伪造）；
+    fork 度量切换（R1 修订，vitfly 实证）：fork 本身不降权，用 fork 后增量
+    （own_commits/own_span_days，缺增量数据按 0 保守）衡量——毕设在 fork 上
+    持续演进恰恰是高成本投入的强信号；仅 fork 后零增量才判 weak。
+    R1 is_fork 且 own_commits==0 → weak（fork 后零提交，收藏/抄壳）；
+    R2 有效 commits<10 → weak（课程作业概率大）；
+    R3 有效 span ≥6 个月 → strong（长期投入难伪造）；
+    R3b own_commits≥100 且 own_span≥60 天 → strong（高密度持续投入）；
     R7 stars 仅记 reason 不进 grade（可刷，信号弱）；
     R8 主语言占比 >80% 仅记 reason（技术栈一致性佐证）；
-    缺省收敛 normal。
+    缺省收敛 normal。有效 commits/span：fork 用 own_*，原创用总量。
     """
     reasons: list[str] = []
     stars = facts.get("stars")
@@ -99,16 +103,30 @@ def grade_repo(facts: dict[str, Any]) -> tuple[str, list[str]]:
         lang, share = _dominant_language({str(k): int(v) for k, v in languages.items()})
         if lang and share > 0.8:
             reasons.append(f"R8: 主语言 {lang} 占比 {share:.0%}>80%，技术栈一致佐证")
-    if facts.get("is_fork"):
-        reasons.append("R1: fork 无原创成本")
+    is_fork = bool(facts.get("is_fork"))
+    if is_fork:
+        # fork 度量切换：增量缺失（旧数据/采集失败）按 0 保守
+        own_commits = int(facts.get("own_commits") or 0)
+        own_span = int(facts.get("own_span_days") or 0)
+        effective_commits, effective_span = own_commits, float(own_span)
+        if own_commits == 0:
+            reasons.append("R1: fork 后零增量提交，收藏/抄壳（缺增量数据亦按此保守）")
+            return "weak", reasons
+        reasons.append(f"R1: fork 后自主演进 {own_commits} commits，按增量衡量")
+    else:
+        effective_commits = int(facts.get("commits") or 0)
+        effective_span = _span_days(facts)
+    if effective_commits < 10:
+        reasons.append(f"R2: 有效 commits={effective_commits}<10，课程作业概率大")
         return "weak", reasons
-    commits = facts.get("commits") or 0
-    if commits < 10:
-        reasons.append(f"R2: commits={commits}<10，课程作业概率大")
-        return "weak", reasons
-    span = _span_days(facts)
-    if span >= SPAN_STRONG_DAYS:
-        reasons.append(f"R3: 持续 commit ≥6 个月（span {span} 天），长期投入难伪造")
+    if effective_span >= SPAN_STRONG_DAYS:
+        reasons.append(f"R3: 持续 commit ≥6 个月（span {int(effective_span)} 天），长期投入难伪造")
+        return "strong", reasons
+    if is_fork and facts.get("own_commits", 0) >= 100 and facts.get("own_span_days", 0) >= 60:
+        reasons.append(
+            f"R3b: fork 后高密度持续投入（{facts.get('own_commits')} commits / "
+            f"{facts.get('own_span_days')} 天），短期高强度演进"
+        )
         return "strong", reasons
     return "normal", reasons
 
