@@ -2,12 +2,16 @@
 
 约定（prompt-cache，仿 OpenBiliClaw）：system 必须是模块级静态常量，
 一切变量放 user message——system 随调用变化会击穿 provider 缓存。
-配置链（优先级从高到低）：
+配置链（优先级从高到低，M8 起文件层优先于 env）：
   1. 构造参数 base_url/api_key/model
-  2. 环境变量 TALENTFORGE_LLM_BASE_URL / TALENTFORGE_LLM_API_KEY / TALENTFORGE_LLM_MODEL
-  3. 回退：OpenCode 本地凭据（~/.local/share/opencode/auth.json，先 zhipuai-coding-plan
+  2. 设置文件 data/llm_settings.json（M8 设置页保存；路径 env
+     TALENTFORGE_LLM_SETTINGS_PATH 可覆盖）——用户在 UI 显式保存的配置
+     胜过作为部署种子的 env（优先级变更说明见 llm.settings）
+  3. 环境变量 TALENTFORGE_LLM_BASE_URL / TALENTFORGE_LLM_API_KEY / TALENTFORGE_LLM_MODEL
+  4. 回退：OpenCode 本地凭据（~/.local/share/opencode/auth.json，先 zhipuai-coding-plan
      的 GLM（glm-5.3 @ coding/paas/v4，deepseek 欠费后切换），后 deepseek.key；
      仅当未显式配置时读取；key 不落本项目任何文件）
+解析统一走 llm.settings.effective_client_settings（逐字段回退，允许混搭）。
 """
 from __future__ import annotations
 
@@ -18,6 +22,8 @@ from pathlib import Path
 from typing import Protocol
 
 import httpx
+
+from talentforge.llm.settings import effective_client_settings
 
 logger = logging.getLogger(__name__)
 
@@ -68,18 +74,18 @@ class EnvLLMClient:
         transport: httpx.BaseTransport | None = None,
         timeout: float = 120.0,
     ) -> None:
-        env_base = os.environ.get("TALENTFORGE_LLM_BASE_URL", "")
-        env_key = os.environ.get("TALENTFORGE_LLM_API_KEY", "")
-        env_model = os.environ.get("TALENTFORGE_LLM_MODEL", "")
-        fallback_base, fallback_key, fallback_model = resolve_opencode_credentials()
-        self._base_url = (base_url or env_base or fallback_base).rstrip("/")
-        self._api_key = api_key or env_key or fallback_key
-        self._model = model or env_model or fallback_model
+        eff_base, eff_key, eff_model = effective_client_settings()
+        self._base_url = (base_url or eff_base).rstrip("/")
+        self._api_key = api_key or eff_key
+        self._model = model or eff_model
         self._transport = transport
         self._timeout = timeout
 
-    async def chat(self, system: str, user: str) -> str:
-        """单轮对话；空 content（思考模型偶发只出 reasoning 不出答案）自动重试一次。"""
+    async def chat(self, system: str, user: str, max_tokens: int | None = None) -> str:
+        """单轮对话；空 content（思考模型偶发只出 reasoning 不出答案）自动重试一次。
+
+        max_tokens 供连通性探针等廉价调用限长（缺省不限制，常规对话不传）。
+        """
         if not self._base_url or not self._model:
             raise RuntimeError("LLM 未配置：需 TALENTFORGE_LLM_BASE_URL / TALENTFORGE_LLM_MODEL")
         payload = {
@@ -90,6 +96,8 @@ class EnvLLMClient:
                 {"role": "user", "content": user},
             ],
         }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
         async with httpx.AsyncClient(transport=self._transport, timeout=self._timeout) as client:
             for attempt in (1, 2):

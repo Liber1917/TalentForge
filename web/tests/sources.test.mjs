@@ -336,3 +336,48 @@ test("XSS：作品源卡名称/说明含脚本一律转义", () => {
   assert.doesNotMatch(evil, /<script>/);
   assert.doesNotMatch(evil, /<img src=x/);
 });
+
+/* ---------- LLM 模型服务卡（M8） ---------- */
+
+test("renderSourceCard LLM 卡含 base_url/model/key/并发输入 + 保存/测试连接 + 状态行", () => {
+  const html = Sources.renderSourceCard({
+    key: "llm",
+    name: "模型服务",
+    kind: "llm",
+    home: "",
+    nav: "blank",
+    status: { source: "config", masked: "" },
+    note: "配置自定义 LLM API（OpenAI 兼容 base_url / key / model）与决策匹配并发度；测试连接通过后保存，立即生效",
+  });
+  assert.match(html, /data-source-key="llm"/);
+  assert.match(html, />模型服务</);
+  assert.match(html, /模型服务/);
+  assert.match(html, /data-role="llm-base-url"/);
+  assert.match(html, /placeholder="https:\/\/api\.openai\.com\/v1"/);
+  assert.match(html, /data-role="llm-model"/);
+  assert.match(html, /data-role="llm-api-key"/);
+  assert.match(html, /type="password"/);
+  assert.match(html, /留空保存不覆盖现有值/);
+  assert.match(html, /data-role="llm-concurrency"/);
+  assert.match(html, /data-action="llm-save"/);
+  assert.match(html, /data-action="llm-verify"/);
+  assert.match(html, />保存</);
+  assert.match(html, />测试连接</);
+  assert.match(html, /data-role="source-status"/);
+  assert.match(html, /aria-live="polite"/);
+});
+
+test("renderSourceCard LLM 卡 XSS：恶意名称/说明一律转义", () => {
+  const evil = Sources.renderSourceCard({
+    key: "llm",
+    name: '<script>alert(1)</script>',
+    kind: "llm",
+    home: "",
+    nav: "blank",
+    status: { source: "config", masked: "" },
+    note: '<img src=x onerror=alert(2)>',
+  });
+  assert.match(evil, /&lt;script&gt;/);
+  assert.doesNotMatch(evil, /<script>/);
+  assert.doesNotMatch(evil, /<img src=x/);
+});

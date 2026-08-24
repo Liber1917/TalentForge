@@ -2,8 +2,9 @@
 
 --offline-file 演示/测试模式可跳过浏览器（jobs 参数直接喂入）；
 reflective_question 现阶段用规则模板生成（M3 换 LLM）。
-逐岗 LLM 匹配用信号量限并发（MATCH_CONCURRENCY，默认 5）——30 岗实测
-146s 串行 → ~30s 并发；items 顺序与 jobs 一致（gather 结果按序回收）。
+逐岗 LLM 匹配用信号量限并发（默认 5）——30 岗实测 146s 串行 → ~30s 并发；
+items 顺序与 jobs 一致（gather 结果按序回收）。并发度现走
+llm.settings.effective_match_concurrency（设置页 > env > 5，M8）。
 """
 
 from __future__ import annotations
@@ -19,12 +20,10 @@ from talentforge.domain.match import Match
 from talentforge.domain.profile import Profile
 from talentforge.field.risks import assess
 from talentforge.llm.client import EnvLLMClient
+from talentforge.llm.settings import effective_match_concurrency
 from talentforge.matcher.coarse import CoarseMatcher
 from talentforge.sources.boss_scraper import BossScraper
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db, upsert_job
-
-# 并发度 env 可调；5 是 LLM provider 限流友好值（太高触发 429 反而更慢）
-MATCH_CONCURRENCY = max(1, int(os.environ.get("TALENTFORGE_MATCH_CONCURRENCY", "5")))
 
 
 def _risk_hits(field_notes: dict[str, object]) -> list[dict[str, str]]:
@@ -86,7 +85,7 @@ async def generate_report(
     for job in jobs:
         upsert_job(conn, job)
 
-    semaphore = asyncio.Semaphore(MATCH_CONCURRENCY)
+    semaphore = asyncio.Semaphore(effective_match_concurrency())
 
     async def _decide_one(job: Job) -> dict[str, object]:
         field_notes = assess(job)

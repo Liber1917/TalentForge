@@ -62,7 +62,7 @@ def test_get_sources_lists_six_entries(monkeypatch: Any, tmp_path: Path) -> None
     response = client.get("/api/sources")
     assert response.status_code == 200
     sources = response.json()["sources"]
-    assert [s["key"] for s in sources] == ["boss", "bilibili", "zhihu", "github", "gitee", "arxiv"]
+    assert [s["key"] for s in sources] == ["boss", "bilibili", "zhihu", "github", "gitee", "arxiv", "llm"]
     by_key = {s["key"]: s for s in sources}
     assert by_key["boss"]["kind"] == "extension"
     assert by_key["boss"]["status"] == {"source": "extension", "masked": ""}
@@ -97,6 +97,11 @@ def test_get_sources_lists_six_entries(monkeypatch: Any, tmp_path: Path) -> None
     assert "Zhang San" in by_key["arxiv"]["note"]
     assert "preprint 信号上限 normal" in by_key["arxiv"]["note"]
     assert "CCF 升 strong" in by_key["arxiv"]["note"]
+    # M8 模型服务卡：llm 静态卡（kind=llm）
+    assert by_key["llm"]["kind"] == "llm"
+    assert by_key["llm"]["name"] == "模型服务"
+    assert by_key["llm"]["status"] == {"source": "config", "masked": ""}
+    assert "配置自定义 LLM API" in by_key["llm"]["note"]
 
 
 def test_save_credential_roundtrip_without_leak(
