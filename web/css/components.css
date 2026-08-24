@@ -61,17 +61,20 @@
   text-decoration: none;
 }
 .nav__tab:hover { color: var(--text-primary); background-color: var(--surface-sand); text-decoration: none; }
+/* active：accent-soft 底 + 轻微抬升（与 profile-tab/verdict-filter 选中态同语言） */
 .nav__tab.is-active,
 .nav__tab[aria-current="page"] {
   color: var(--accent);
   background-color: var(--accent-soft);
+  box-shadow: 0 1px 3px var(--shadow-color);
 }
 
+/* 待定池徽章：hold 琥珀语义（待定池=观望中的主张，与 verdict-badge--hold 同色板） */
 .topbar__badge {
   font-size: var(--fs-caption);
-  color: var(--text-secondary);
-  background-color: var(--surface-secondary);
-  border: 1px solid var(--border-strong);
+  color: var(--hold);
+  background-color: var(--hold-bg);
+  border: 1px solid var(--hold);
   border-radius: var(--radius-pill);
   padding: var(--space-1) var(--space-3);
   white-space: nowrap;
@@ -215,7 +218,11 @@
   font-size: var(--fs-body);
 }
 .input::placeholder { color: var(--text-tertiary); }
-.input:focus-visible { border-color: var(--ok); }
+/* focus 环：ok 绿边框 + 同色柔光（sand 底上比纯边框明显，DESIGN.md §7） */
+.input:focus-visible {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+}
 
 .composer {
   display: flex;
@@ -628,22 +635,21 @@
 }
 .job-row .card__meta { margin: 0; }
 
-/* 空态 / 未选中详情占位 */
-.jobs-empty {
-  padding: var(--space-9) var(--space-4);
+/* 空态 / 未选中详情占位：五处空态统一视觉（jobs/pool/explore/offline/detail） */
+.jobs-empty,
+.job-detail__empty,
+.pool-empty,
+.explore-empty,
+.source-offline {
+  padding: var(--space-8) var(--space-4);
   text-align: center;
   color: var(--text-tertiary);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-card);
 }
-.jobs-empty p:last-child { margin-bottom: 0; }
-.job-detail__empty {
-  padding: var(--space-9) var(--space-4);
-  text-align: center;
-  color: var(--text-tertiary);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-card);
-}
+.jobs-empty p:last-child,
+.source-offline p { margin-bottom: 0; }
+.explore-empty p { margin: 0; }
 
 /* 详情面板 */
 .jobs-detail { min-width: 0; }
@@ -739,13 +745,6 @@
 /* ---------- 待定池 tab ---------- */
 .pool { display: flex; flex-direction: column; gap: var(--space-5); }
 .pool-trial { display: flex; flex-direction: column; gap: var(--space-3); }
-.pool-empty {
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-  color: var(--text-tertiary);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-card);
-}
 /* active/archived 折叠区（历史主张） */
 .pool-fold {
   border: 1px solid var(--border-subtle);
@@ -1058,16 +1057,6 @@
   background-color: var(--risk-bg);
 }
 
-/* 后端未启动占位 */
-.source-offline {
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-  color: var(--text-tertiary);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-card);
-}
-.source-offline p { margin: 0; }
-
 /* ---------- 平台源移动端（375 档）：操作按钮整行 ---------- */
 @media (max-width: 639px) {
   .source-card__actions .btn { flex: 1; }
@@ -1204,6 +1193,8 @@
 
 /* 平台源卡：作品拉取输入行（source-card__body 为 align-start，输入需占整行） */
 .source-card__work-input { width: 100%; }
+/* LLM 模型服务卡（M8）：同 work 输入，占整行 */
+.source-card__llm-input { width: 100%; }
 
 /* ---------- 作品区移动端（375 档）：操作按钮整行、meta/count 换行 ---------- */
 @media (max-width: 639px) {
@@ -1546,16 +1537,6 @@
 .explore-status { margin: 0; font-size: var(--fs-body-sm); }
 .explore-status--loading { font-family: var(--font-serif); font-style: italic; color: var(--text-tertiary); }
 .explore-status--error { color: var(--risk); }
-
-/* 空态 */
-.explore-empty {
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-  color: var(--text-tertiary);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-card);
-}
-.explore-empty p { margin: 0; }
 
 /* ---------- 方向探索移动端（375 档）：meta 换行、深挖按钮整行 ---------- */
 @media (max-width: 639px) {
