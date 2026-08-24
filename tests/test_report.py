@@ -234,3 +234,14 @@ def test_reflective_question_fallback_without_deep_drive() -> None:
     question = _reflective_question(_make_job(), match, field_notes, profile)
 
     assert question == "这份工作推进你的长期方向吗？"
+
+
+async def test_generate_report_items_preserve_job_order() -> None:
+    """并发匹配后 items 顺序与 jobs 一致（gather 按序回收，backlog 修复钉桩）。"""
+    profile = _profile()
+    jobs = [_make_job(id=f"j{i}", url=U.format(f"o{i}")) for i in range(3)]
+    report = await generate_report(
+        profile, "后端工程师", "深圳", jobs=jobs,
+        matcher=CoarseMatcher(FakeLLM(VALID_MATCH_JSON)), conn=init_db(":memory:"),
+    )
+    assert [item["job_id"] for item in report["items"]] == [job.id for job in jobs]

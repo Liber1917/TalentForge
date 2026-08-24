@@ -35,6 +35,9 @@ MAX_OPEN_ISSUES = 500    # R-s3 维护能力上限
 SEARCH_PER_PAGE = 15     # search API 单页条数（筛后留余量）
 SUGGEST_LIMIT = 5        # 最终返回上限
 SUGGESTIONS_TTL = timedelta(hours=24)
+# 规则筛光（如全低星/全不活跃）的空结果短缓存：真 backlog 教训——空列表
+# 曾与成功结果同享 24h TTL，某 gap 一旦筛光一天翻不了身。10 分钟后重搜。
+EMPTY_RESULT_TTL = timedelta(minutes=10)
 
 
 def _resolve_path() -> Path:
@@ -168,14 +171,16 @@ def _read_cache() -> dict[str, Any]:
 
 
 def _cache_fresh(entry: dict[str, Any]) -> bool:
-    """TTL 校验：cached_at 距今 < SUGGESTIONS_TTL；缺失/无法解析按过期。"""
+    """TTL 校验：空结果用 EMPTY_RESULT_TTL、非空用 SUGGESTIONS_TTL；缺失/无法解析按过期。"""
+    items = entry.get("items")
+    ttl = EMPTY_RESULT_TTL if isinstance(items, list) and not items else SUGGESTIONS_TTL
     try:
         cached_at = datetime.fromisoformat(str(entry.get("cached_at") or ""))
     except ValueError:
         return False
     if cached_at.tzinfo is None:
         cached_at = cached_at.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - cached_at < SUGGESTIONS_TTL
+    return datetime.now(timezone.utc) - cached_at < ttl
 
 
 def _write_cache(gap_skill: str, items: list[dict[str, Any]]) -> None:

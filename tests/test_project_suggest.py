@@ -475,3 +475,29 @@ def test_for_job_skips_malformed_gap_entries(
         "results": [{"skill": "Kubernetes", "severity": "", "suggestions": []}],
     }
     assert calls == ["Kubernetes|"]
+
+
+async def test_empty_result_cache_expires_fast_non_empty_slowly(tmp_path, monkeypatch):
+    """空结果短 TTL（10min）钉桩：空缓存 11 分钟后过期重搜，非空缓存不受影响。"""
+    from datetime import datetime, timedelta, timezone
+
+    from talentforge.sources import project_suggest as suggest_mod
+
+    monkeypatch.setattr(suggest_mod, "SUGGESTIONS_PATH", tmp_path / "s.json")
+    cache = {
+        "Gap空": {"items": [], "cached_at": (datetime.now(timezone.utc) - timedelta(minutes=11)).isoformat()},
+        "Gap满": {"items": [{"full_name": "a/b"}], "cached_at": (datetime.now(timezone.utc) - timedelta(minutes=11)).isoformat()},
+    }
+    (tmp_path / "s.json").write_text(json.dumps(cache), encoding="utf-8")
+
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, json={"total_count": 0, "items": []})
+
+    # 空缓存过期 → 重搜（记 1 次网络）；非空缓存 11 分钟仍新鲜 → 不搜
+    await suggest_mod.suggest_projects("Gap满", transport=httpx.MockTransport(handler))
+    assert calls["n"] == 0
+    await suggest_mod.suggest_projects("Gap空", transport=httpx.MockTransport(handler))
+    assert calls["n"] == 1

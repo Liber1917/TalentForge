@@ -12,11 +12,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Protocol
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 _OPENCODE_AUTH = Path.home() / ".local" / "share" / "opencode" / "auth.json"
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com"
@@ -76,6 +79,7 @@ class EnvLLMClient:
         self._timeout = timeout
 
     async def chat(self, system: str, user: str) -> str:
+        """单轮对话；空 content（思考模型偶发只出 reasoning 不出答案）自动重试一次。"""
         if not self._base_url or not self._model:
             raise RuntimeError("LLM 未配置：需 TALENTFORGE_LLM_BASE_URL / TALENTFORGE_LLM_MODEL")
         payload = {
@@ -88,9 +92,14 @@ class EnvLLMClient:
         }
         headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
         async with httpx.AsyncClient(transport=self._transport, timeout=self._timeout) as client:
-            resp = await client.post(
-                f"{self._base_url}/chat/completions", json=payload, headers=headers
-            )
-            resp.raise_for_status()
-            data = resp.json()
-        return str(data["choices"][0]["message"]["content"])
+            for attempt in (1, 2):
+                resp = await client.post(
+                    f"{self._base_url}/chat/completions", json=payload, headers=headers
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = str(data["choices"][0]["message"]["content"])
+                if content.strip() or attempt == 2:
+                    return content
+                logger.info("LLM 空 content（attempt %s），重试一次", attempt)
+        return ""  # 不可达：循环末轮必 return

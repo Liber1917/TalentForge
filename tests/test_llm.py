@@ -112,3 +112,50 @@ def test_env_client_explicit_overrides_everything(tmp_path, monkeypatch):
     assert c._base_url == "https://explicit.test/v1"
     assert c._api_key == "explicit-key"
     assert c._model == "explicit-model"
+
+
+def test_chat_retries_once_on_empty_content(tmp_path, monkeypatch):
+    """空 content（思考模型偶发）自动重试一次，第二次有内容即返回（backlog 修复钉桩）。"""
+    import httpx
+    import talentforge.llm.client as client_mod
+
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "missing.json")
+    monkeypatch.setenv("TALENTFORGE_LLM_BASE_URL", "https://llm.test/v1")
+    monkeypatch.setenv("TALENTFORGE_LLM_API_KEY", "k")
+    monkeypatch.setenv("TALENTFORGE_LLM_MODEL", "m")
+
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        content = "" if calls["n"] == 1 else "ok"
+        return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+
+    client = client_mod.EnvLLMClient(transport=httpx.MockTransport(handler))
+
+    import asyncio
+
+    assert asyncio.run(client.chat("s", "u")) == "ok"
+    assert calls["n"] == 2
+
+
+def test_chat_returns_empty_after_second_empty(tmp_path, monkeypatch):
+    """两轮都空则原样返回空串（不无限重试）。"""
+    import asyncio
+
+    import httpx
+    import talentforge.llm.client as client_mod
+
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "missing.json")
+    monkeypatch.setenv("TALENTFORGE_LLM_BASE_URL", "https://llm.test/v1")
+    monkeypatch.setenv("TALENTFORGE_LLM_API_KEY", "k")
+    monkeypatch.setenv("TALENTFORGE_LLM_MODEL", "m")
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": ""}}]})
+
+    client = client_mod.EnvLLMClient(transport=httpx.MockTransport(handler))
+    assert asyncio.run(client.chat("s", "u")) == ""
+    assert calls["n"] == 2
