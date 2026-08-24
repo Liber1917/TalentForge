@@ -1,0 +1,35 @@
+<!-- 模型服务设置骨架：头部 + 配置表单（base_url/key/model/并发）+ 状态行。
+     由 llm.js 在进入 #/llm 时 fetch 加载并注入 #llm 容器；
+     fetch 失败时使用 llm.js 内置兜底模板（保持一致）。 -->
+<div class="llm-layout">
+  <header class="llm-head">
+    <h2 class="llm-head__title">模型服务</h2>
+    <p class="llm-head__hint">配置自定义 LLM API（OpenAI 兼容端点）——base_url / API Key / 模型 / 决策匹配并发度</p>
+  </header>
+  <form class="llm-form" id="llm-form" aria-label="模型服务配置">
+    <label class="overline" for="llm-base-url">Base URL</label>
+    <input class="input llm-input" id="llm-base-url" type="text"
+           placeholder="https://api.openai.com/v1"
+           autocomplete="off" spellcheck="false" data-role="llm-base-url">
+
+    <label class="overline" for="llm-model">模型</label>
+    <input class="input llm-input" id="llm-model" type="text"
+           placeholder="gpt-4o-mini"
+           autocomplete="off" spellcheck="false" data-role="llm-model">
+
+    <label class="overline" for="llm-api-key">API Key</label>
+    <input class="input llm-input" id="llm-api-key" type="password"
+           placeholder="sk-…（留空保存不覆盖现有值）"
+           autocomplete="off" spellcheck="false" data-role="llm-api-key">
+
+    <label class="overline" for="llm-concurrency">决策匹配并发度</label>
+    <input class="input llm-input" id="llm-concurrency" type="number" min="1" max="16"
+           placeholder="5" data-role="llm-concurrency">
+
+    <div class="llm-actions">
+      <button class="btn btn--primary" type="button" data-action="llm-save">保存</button>
+      <button class="btn btn--ghost" type="button" data-action="llm-verify">测试连接</button>
+    </div>
+    <p class="llm-status" role="status" aria-live="polite" data-role="llm-status"></p>
+  </form>
+</div>

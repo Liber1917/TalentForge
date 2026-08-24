@@ -1193,8 +1193,6 @@
 
 /* 平台源卡：作品拉取输入行（source-card__body 为 align-start，输入需占整行） */
 .source-card__work-input { width: 100%; }
-/* LLM 模型服务卡（M8）：同 work 输入，占整行 */
-.source-card__llm-input { width: 100%; }
 
 /* ---------- 作品区移动端（375 档）：操作按钮整行、meta/count 换行 ---------- */
 @media (max-width: 639px) {
@@ -1339,6 +1337,54 @@
 /* ---------- 推荐区移动端（375 档）：stars 徽章换行左对齐 ---------- */
 @media (max-width: 639px) {
   .suggest-card__stars { margin-inline-start: 0; }
+}
+
+/* ===================== 模型服务独立页（M8：#/llm） ===================== */
+
+.llm-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: var(--container-reading);
+}
+
+.llm-head { padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+.llm-head__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-page-title);
+  font-weight: var(--fw-page-title);
+  line-height: var(--lh-page-title);
+}
+.llm-head__hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-secondary);
+}
+
+/* 配置表单：阅读列内单列堆叠（敏感凭据输入不宜分栏） */
+.llm-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+.llm-input { width: 100%; }
+.llm-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.llm-status {
+  min-height: var(--space-5);
+  margin: 0;
+  font-size: var(--fs-body-sm);
+}
+
+/* ---------- 模型服务移动端（375 档）：操作按钮整行 ---------- */
+@media (max-width: 639px) {
+  .llm-actions .btn { flex: 1; }
 }
 
 /* ===================== 方向探索视图（M7：#/explore 快照页） ===================== */

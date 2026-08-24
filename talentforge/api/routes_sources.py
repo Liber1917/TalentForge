@@ -49,7 +49,6 @@ _SOURCE_NOTES = {
     "github": "公开 API 可用；展开输入用户名即可拉取仓库作品（未认证 60 次/时，env TALENTFORGE_GITHUB_TOKEN 可提额）",
     "gitee": "公开 API 可用；展开输入 Gitee 用户名即可拉取公开仓库作品",
     "arxiv": "输入作者名（如 Zhang San）拉取论文；preprint 信号上限 normal，标题含顶会名查 CCF 升 strong",
-    "llm": "配置自定义 LLM API（OpenAI 兼容 base_url / key / model）与决策匹配并发度；测试连接通过后保存，立即生效",
 }
 
 
@@ -111,15 +110,6 @@ def list_sources() -> dict:
                 "nav": "blank",
                 "status": {"source": "public", "masked": ""},
                 "note": _SOURCE_NOTES["arxiv"],
-            },
-            {
-                "key": "llm",
-                "name": "模型服务",
-                "kind": "llm",
-                "home": "",
-                "nav": "blank",
-                "status": {"source": "config", "masked": ""},
-                "note": _SOURCE_NOTES["llm"],
             },
         ]
     }

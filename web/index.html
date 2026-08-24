@@ -15,6 +15,7 @@
   <script src="js/views/jobs.js" defer></script>
   <script src="js/views/profile.js" defer></script>
   <script src="js/views/sources.js" defer></script>
+  <script src="js/views/llm.js" defer></script>
   <script src="js/views/explore.js" defer></script>
 </head>
 <body class="app-shell">
@@ -27,6 +28,7 @@
         <a class="nav__tab" href="#/jobs">工作台</a>
         <a class="nav__tab" href="#/profile">画像</a>
         <a class="nav__tab" href="#/sources">平台源</a>
+        <a class="nav__tab" href="#/llm">模型</a>
         <a class="nav__tab" href="#/explore">探索</a>
       </nav>
 
@@ -64,6 +66,14 @@
       <div class="view__placeholder">
         <p class="view__placeholder-title">平台源</p>
         <p class="view__placeholder-hint">源卡与凭据设置将在下一步接入</p>
+      </div>
+    </section>
+
+    <!-- 模型服务设置（M8：LLM 配置独立页，无官网链接） -->
+    <section class="view" id="llm" data-view="llm" aria-label="模型服务设置" hidden>
+      <div class="view__placeholder">
+        <p class="view__placeholder-title">模型服务</p>
+        <p class="view__placeholder-hint">LLM 配置表单将在进入时注入</p>
       </div>
     </section>
 
