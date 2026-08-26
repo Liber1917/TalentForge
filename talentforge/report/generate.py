@@ -23,7 +23,6 @@ from talentforge.field.risks import assess
 from talentforge.llm.client import EnvLLMClient
 from talentforge.llm.settings import effective_match_concurrency
 from talentforge.matcher.coarse import CoarseMatcher
-from talentforge.sources.boss_scraper import BossScraper
 from talentforge.sources.job_competency import CompetencyModelCache, RuleCompetencyClusterer
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db, upsert_job
 
@@ -57,17 +56,16 @@ async def generate_report(
     query: str,
     city: str,
     limit: int = 10,
-    scraper: BossScraper | None = None,
     matcher: CoarseMatcher | None = None,
     conn: sqlite3.Connection | None = None,
     jobs: list[Job] | None = None,
 ) -> dict[str, Any]:
-    """产出 Boss 岗位链路的决策报告 dict。
+    """产出岗位链路的决策报告 dict。
 
-    默认构造 BossScraper / CoarseMatcher(EnvLLMClient()) / init_db(默认路径)；
-    jobs 非 None 时跳过抓取器（offline-file 演示/测试）；conn/matcher 由调用方
-    传入以便注入内存库与 FakeLLM。summary 统计 apply/hold/skip，items 每项含
-    verdict、reason、risk_hits、reflective_question、gaps（LLM 无 gaps → []）。
+    采集走浏览器扩展（D25），本函数只消费库内岗位（jobs 必须传入，空 → 空报告）。
+    默认构造 CoarseMatcher(EnvLLMClient()) / init_db(默认路径)；conn/matcher 由
+    调用方传入以便注入内存库与 FakeLLM。summary 统计 apply/hold/skip，items
+    每项含 verdict、reason、risk_hits、reflective_question、gaps、competency。
     """
     if matcher is None:
         matcher = CoarseMatcher(EnvLLMClient())
@@ -76,10 +74,7 @@ async def generate_report(
         conn = init_db(DEFAULT_DB_PATH)
 
     if jobs is None:
-        if scraper is None:
-            scraper = BossScraper()
-        async with scraper:
-            jobs = await scraper.scrape(query, city, limit=limit, pages=3)
+        jobs = []
     else:
         jobs = jobs[:limit]
 

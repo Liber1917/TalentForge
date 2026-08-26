@@ -2,7 +2,7 @@
 
 状态存内存 dict（task_id → state: running/done/failed + result/error）；
 POST 返回 {task_id, state:running}，GET /api/report/status 不带 task_id 时返回最新任务。
-任务复用 app.state.conn / app.state.llm；jobs 从库读（空库走抓取器）。
+任务复用 app.state.conn / app.state.llm；jobs 从库读（采集走浏览器扩展，空库返回空报告）。
 产物写 decisions 缓存（job_url → verdict/reason/gaps），供 GET /api/jobs 显示。
 """
 
@@ -72,7 +72,7 @@ def report_status(request: Request, task_id: str | None = None) -> dict:
 
 
 async def _run_report_task(app: Any, task_id: str, payload: ReportPayload) -> None:
-    """后台任务：读库 jobs（空则走抓取器）→ generate_report → 更新任务状态。"""
+    """后台任务：读库 jobs → generate_report → 更新任务状态（采集走扩展，空库返回空报告）。"""
     state = app.state
     entry = state.report_tasks[task_id]
     try:
