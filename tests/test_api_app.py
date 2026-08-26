@@ -79,7 +79,17 @@ def test_root_serves_index_html_when_present(tmp_path: Path) -> None:
     assert "placeholder" in response.text
 
 
-def test_cors_headers_permissive() -> None:
+def test_origin_guard_replaces_permissive_cors() -> None:
+    """M10 安全批次：宽松 CORS（access-control-allow-origin: *）已移除。
+
+    本地服务改为 Origin 守卫——本机 Origin 放行但不再回 CORS 通配头；
+    跨站 Origin（如恶意网页）直接 403。
+    """
     client = _client()
+    # 本机 Origin 放行，但不再有通配 CORS 头
     response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers
+    # 跨站 Origin 拒绝
+    evil = client.get("/api/health", headers={"Origin": "https://evil.example.com"})
+    assert evil.status_code == 403

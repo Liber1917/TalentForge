@@ -1,4 +1,8 @@
-"""FastAPI 应用工厂：健康检查 + 事件接收（复用 handle_events）+ 静态挂载 + 宽松 CORS。"""
+"""FastAPI 应用工厂：健康检查 + 事件接收（复用 handle_events）+ 静态挂载 + Origin 校验。
+
+Origin 校验（M10 安全批次）：本地服务默认只服务本机，拒绝跨站请求（恶意网页
+对 127.0.0.1:8420 的 CSRF）。同源/无 Origin 头（curl/扩展）/localhost Origin 放行。
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,6 @@ import sqlite3
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -64,13 +67,22 @@ def create_app(
 
     app = FastAPI(title="TalentForge", version="0.1.0")
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    @app.middleware("http")
+    async def origin_guard(request: Request, call_next):  # type: ignore[no-untyped-def]
+        """Origin 校验（M10）：拒绝跨站请求（CSRF），仅放行同源/本机来源。
+
+        本地服务只服务本机浏览器与扩展——恶意网页对 127.0.0.1:8420 发请求时
+        Origin 是攻击站点，必须拒绝。检查 Origin 头自身的 hostname 是否为本机
+        （localhost/127.0.0.1）；无 Origin 头（curl/扩展 fetch/同源导航）放行。
+        """
+        origin = request.headers.get("origin")
+        if origin:
+            from urllib.parse import urlparse
+
+            host = urlparse(origin).hostname or ""
+            if host not in ("127.0.0.1", "localhost"):
+                return JSONResponse(status_code=403, content={"detail": "forbidden origin"})
+        return await call_next(request)
 
     app.state.conn = conn
     app.state.llm = llm if llm is not None else EnvLLMClient()

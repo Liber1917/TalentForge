@@ -216,7 +216,11 @@ def test_saved_file_preserves_other_keys(monkeypatch: Any, tmp_path: Path) -> No
     cookies_module.save_boss_cookie("wt2=abc123def456")
     data = json.loads(cred.read_text(encoding="utf-8"))
     assert data["github_token"] == "ghp_keepme"
-    assert data["boss_cookie"] == "wt2=abc123def456"
+    # M10 安全批次：boss_cookie 落盘为 Fernet 密文，不存明文
+    from talentforge.security.crypto import decrypt_value
+
+    assert decrypt_value(data["boss_cookie"]) == "wt2=abc123def456"
+    assert "wt2=abc123def456" not in json.dumps(data)
 
 
 def test_load_boss_cookies_prefers_env_over_saved(monkeypatch: Any, tmp_path: Path) -> None:

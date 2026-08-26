@@ -15,6 +15,8 @@ import logging
 import os
 from pathlib import Path
 
+from talentforge.security.crypto import decrypt_value, encrypt_value
+
 logger = logging.getLogger(__name__)
 
 BOSS_COOKIE_DOMAIN = ".zhipin.com"
@@ -62,7 +64,10 @@ def _env_raw() -> str:
 
 
 def _saved_raw() -> str:
-    """读页面保存层 data/credentials.json 的 boss_cookie（缺失/损坏返回空串并告警）。"""
+    """读页面保存层 data/credentials.json 的 boss_cookie（缺失/损坏返回空串并告警）。
+
+    M10 安全批次：落盘为 Fernet 密文，读回解密；遗留明文（解密原样返回）自动兼容。
+    """
     try:
         data = json.loads(CREDENTIALS_FILE.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as e:
@@ -71,7 +76,8 @@ def _saved_raw() -> str:
         return ""
     if not isinstance(data, dict):
         return ""
-    return str(data.get("boss_cookie", "")).strip()
+    raw = str(data.get("boss_cookie", "")).strip()
+    return decrypt_value(raw) if raw else ""
 
 
 def _jobclaw_cookies() -> list[dict[str, str]]:
@@ -149,7 +155,7 @@ def save_boss_cookie(raw: str) -> None:
             data = {}
     except (json.JSONDecodeError, OSError):
         data = {}
-    data["boss_cookie"] = cleaned
+    data["boss_cookie"] = encrypt_value(cleaned)
     CREDENTIALS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 

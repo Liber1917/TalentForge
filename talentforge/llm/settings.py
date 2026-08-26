@@ -22,6 +22,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
+from talentforge.security.crypto import decrypt_value, encrypt_value
 from talentforge.sources.cookies import mask_cookie
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,11 @@ class LLMSettingsStore:
     """load/save/masked 三件套（无状态薄封装，路径每次经 settings_path() 解析）。"""
 
     def load(self) -> LLMSettings:
-        """读设置文件；缺失/损坏/字段校验失败 → 全默认（损坏告警，不抛错）。"""
+        """读设置文件；缺失/损坏/字段校验失败 → 全默认（损坏告警，不抛错）。
+
+        api_key 落盘为 Fernet 密文（M10 安全批次），读回解密；遗留明文
+        （解密原样返回）自动兼容，下次 save 时转加密。
+        """
         path = settings_path()
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
@@ -66,6 +71,8 @@ class LLMSettingsStore:
         if not isinstance(data, dict):
             logger.warning("LLM 设置文件 %s 结构异常（非对象），按默认处理", path)
             return LLMSettings()
+        if isinstance(data.get("api_key"), str) and data["api_key"]:
+            data["api_key"] = decrypt_value(data["api_key"])
         try:
             return LLMSettings.model_validate(data)
         except ValidationError as exc:
@@ -98,8 +105,11 @@ class LLMSettingsStore:
         settings = LLMSettings.model_validate(data)
         path = settings_path()
         path.parent.mkdir(parents=True, exist_ok=True)
+        dump = settings.model_dump()
+        if dump.get("api_key"):
+            dump["api_key"] = encrypt_value(dump["api_key"])
         path.write_text(
-            json.dumps(settings.model_dump(), ensure_ascii=False, indent=2),
+            json.dumps(dump, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         return settings

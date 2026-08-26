@@ -25,26 +25,6 @@ function postJobs(jobs: unknown[]): void {
   });
 }
 
-/** Debug telemetry: report harvest outcomes to the backend log (troubleshoot only). */
-function reportDiagnostic(kind: string, detail: Record<string, unknown>): void {
-  try {
-    fetch(`${backendEndpoint()}/debug`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        source: "boss",
-        kind,
-        url: window.location.href.slice(0, 120),
-        ...detail,
-        at: new Date().toISOString(),
-      }),
-      keepalive: true,
-    }).catch(() => {});
-  } catch {
-    // telemetry is best-effort
-  }
-}
-
 /** wapi channel: same-origin fetch of the job-list JSON (cookies+stoken auto). */
 async function harvestViaWapi(): Promise<void> {
   const params = buildWapiParams(window.location.href);
@@ -53,24 +33,14 @@ async function harvestViaWapi(): Promise<void> {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    reportDiagnostic("wapi", { status: res.status });
     if (!res.ok) return;
     const body = (await res.json()) as Record<string, unknown>;
-    const zpData = (body.zpData ?? {}) as Record<string, unknown>;
-    const rawList = Array.isArray(zpData.jobList) ? zpData.jobList : [];
     const mapped = mapWapiJobList(body);
-    reportDiagnostic("wapi-body", {
-      code: body.code,
-      listLen: rawList.length,
-      mapped,
-      sample: rawList.length > 0 ? Object.keys(rawList[0] as object).slice(0, 25) : [],
-    });
     const fresh = mapped.filter((job) => !sentUrls.has(job.url));
     for (const job of fresh) sentUrls.add(job.url);
-    reportDiagnostic("wapi-post", { fresh: fresh.length });
     postJobs(fresh);
   } catch (err) {
-    reportDiagnostic("wapi-error", { msg: String(err).slice(0, 120) });
+    // 采集失败静默：下一轮 scroll/URL 变化重试
   }
 }
 
@@ -79,7 +49,6 @@ function harvestDom(): void {
   const all = collectVisibleJobs();
   const fresh = all.filter((job) => !sentUrls.has(job.url));
   for (const job of fresh) sentUrls.add(job.url);
-  reportDiagnostic("dom", { cards: all.length, fresh });
   postJobs(fresh);
 }
 
