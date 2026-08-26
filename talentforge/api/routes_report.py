@@ -32,15 +32,40 @@ class ReportPayload(BaseModel):
 
 
 def _store_decisions(state: Any, items: list[dict[str, object]]) -> None:
-    """把 report items 的 verdict/reason/gaps 落 decisions 缓存（按 job url 键控）。"""
+    """把 report items 的 verdict/reason/gaps/competency 落库 + 内存缓存。
+
+    内存缓存（state.decisions，job_url 键控）供 GET /api/jobs 工作台实时显示；
+    decisions 表 append-only 落库（M10 回测地基）——服务重启不丢，可导出回测。
+    """
     for item in items:
         url = str(item.get("url"))
-        if url:
-            state.decisions[url] = {
-                "verdict": str(item.get("verdict")),
-                "reason": str(item.get("reason", "")),
-                "gaps": item.get("gaps", []),
-            }
+        if not url:
+            continue
+        record = {
+            "verdict": str(item.get("verdict")),
+            "reason": str(item.get("reason", "")),
+            "gaps": item.get("gaps", []),
+        }
+        state.decisions[url] = record
+        try:
+            from talentforge.storage.db import insert_decision
+
+            insert_decision(
+                state.conn,
+                job_url=url,
+                source=str(item.get("source", "boss")),
+                title=str(item.get("title", "")),
+                company=str(item.get("company", "")),
+                verdict=record["verdict"],
+                reason=record["reason"],
+                gaps=record["gaps"],
+                competency=item.get("competency", []),
+                profile_snapshot=getattr(state, "profile_snapshot", None),
+            )
+        except Exception as exc:  # noqa: BLE001 — 决策落库失败不影响主流程
+            import logging
+
+            logging.getLogger(__name__).warning("决策落库失败: %s", exc)
 
 
 @router.post("/api/report/run")

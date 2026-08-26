@@ -224,5 +224,38 @@ def profile_update(profile_file: str, limit: int, db: str | None) -> None:
     )
 
 
+@main.command("export")
+@click.option("--since", default=None, help="只导出此时间（ISO 串）之后的决策历史")
+@click.option("--out", default="talentforge-export.json", help="导出文件路径")
+@click.option("--db", default=None, help="数据库路径（默认 data/talentforge.db）")
+def export_command(since: str | None, out: str, db: str | None) -> None:
+    """导出决策历史 + 岗位 + 画像快照（M10 回测地基，JSON 单文件）。
+
+    回测用法：改完规则后，用同一份导出数据对比新旧 verdict 分布；
+    亦可作为用户数据备份。凭据（LLM key / cookie）绝不出现在导出里。
+    """
+    from talentforge.api.common import load_profile
+    from talentforge.storage.db import init_db, list_decisions, list_jobs
+
+    conn = init_db(db or "data/talentforge.db")
+    decisions = list_decisions(conn, limit=100000, since=since)
+    jobs = [j.model_dump(mode="json") for j in list_jobs(conn, limit=100000)]
+    try:
+        profile = load_profile().model_dump(mode="json")
+    except Exception:  # noqa: BLE001 — 画像缺失不阻断导出
+        profile = None
+    payload = {
+        "exported_at": __import__("datetime").datetime.now().isoformat(),
+        "since": since,
+        "n_decisions": len(decisions),
+        "n_jobs": len(jobs),
+        "profile": profile,
+        "decisions": decisions,
+        "jobs": jobs,
+    }
+    Path(out).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    click.echo(f"已导出 {len(decisions)} 条决策 + {len(jobs)} 条岗位 → {out}")
+
+
 if __name__ == "__main__":
     main()

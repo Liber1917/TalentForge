@@ -77,6 +77,11 @@ def create_app(
     app.state.chat_turns = []
     app.state.report_tasks = {}
     app.state.decisions = {}
+    # 画像快照（M10 回测地基）：决策落库时附带，供回测还原当时画像状态
+    try:
+        app.state.profile_snapshot = load_profile().model_dump(mode="json")
+    except Exception:  # noqa: BLE001 — 画像缺失不阻断服务启动
+        app.state.profile_snapshot = None
 
     @app.get("/api/health")
     def health() -> dict:

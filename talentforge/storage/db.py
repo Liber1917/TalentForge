@@ -39,6 +39,21 @@ _SCHEMA: tuple[str, ...] = (
         received_at TEXT
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS decisions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_url TEXT,
+        source TEXT,
+        title TEXT,
+        company TEXT,
+        verdict TEXT,
+        reason TEXT,
+        gaps_json TEXT,
+        competency_json TEXT,
+        profile_snapshot_json TEXT,
+        decided_at TEXT
+    )
+    """,
 )
 
 
@@ -182,3 +197,88 @@ def list_jobs(conn: sqlite3.Connection, limit: int = 100, offset: int = 0) -> li
             )
         )
     return jobs
+
+
+def insert_decision(
+    conn: sqlite3.Connection,
+    job_url: str,
+    source: str,
+    title: str,
+    company: str,
+    verdict: str,
+    reason: str,
+    gaps: list,
+    competency: list,
+    profile_snapshot: dict | None = None,
+    decided_at: str | None = None,
+) -> None:
+    """落一条决策历史（append-only，回测地基）：每次决策都追加，不覆盖。"""
+    if decided_at is None:
+        decided_at = datetime.now().isoformat()
+    conn.execute(
+        """
+        INSERT INTO decisions
+            (job_url, source, title, company, verdict, reason,
+             gaps_json, competency_json, profile_snapshot_json, decided_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            job_url,
+            source,
+            title,
+            company,
+            verdict,
+            reason,
+            json.dumps(gaps, ensure_ascii=False),
+            json.dumps(competency, ensure_ascii=False),
+            json.dumps(profile_snapshot, ensure_ascii=False) if profile_snapshot else None,
+            decided_at,
+        ),
+    )
+    conn.commit()
+
+
+def list_decisions(
+    conn: sqlite3.Connection,
+    limit: int = 200,
+    since: str | None = None,
+) -> list[dict]:
+    """按决策时间倒序读回决策历史（limit 条）；since 过滤（ISO 时间串，含该时刻）。
+
+    回测地基：字段含 verdict/reason/gaps/competency/profile_snapshot，JSON 已反序列化。
+    """
+    sql = "SELECT * FROM decisions"
+    params: list = []
+    if since:
+        sql += " WHERE decided_at >= ?"
+        params.append(since)
+    sql += " ORDER BY decided_at DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "job_url": row["job_url"],
+            "source": row["source"],
+            "title": row["title"],
+            "company": row["company"],
+            "verdict": row["verdict"],
+            "reason": row["reason"],
+            "gaps": _load_json_list(row["gaps_json"]),
+            "competency": _load_json_list(row["competency_json"]),
+            "profile_snapshot": _load_json(row["profile_snapshot_json"]),
+            "decided_at": row["decided_at"],
+        }
+        for row in rows
+    ]
+
+
+def _load_json_list(value: str | None) -> list:
+    """反序列化 JSON 数组字段：空串/损坏返回空 list（非 dict 字段用）。"""
+    if not value:
+        return []
+    try:
+        data = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
