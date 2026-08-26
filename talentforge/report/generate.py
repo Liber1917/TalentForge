@@ -14,7 +14,8 @@ import os
 import sqlite3
 from typing import Any
 
-from talentforge.decision.verdict import decide
+from talentforge.decision.verdict import Verdict, decide
+from talentforge.domain.competency import CompetencyModel
 from talentforge.domain.job import Job
 from talentforge.domain.match import Match
 from talentforge.domain.profile import Profile
@@ -23,6 +24,7 @@ from talentforge.llm.client import EnvLLMClient
 from talentforge.llm.settings import effective_match_concurrency
 from talentforge.matcher.coarse import CoarseMatcher
 from talentforge.sources.boss_scraper import BossScraper
+from talentforge.sources.job_competency import CompetencyModelCache, RuleCompetencyClusterer
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db, upsert_job
 
 
@@ -85,13 +87,39 @@ async def generate_report(
     for job in jobs:
         upsert_job(conn, job)
 
+    # M9 岗位胜任力：先聚类分簇 → 每簇复用/新建模型 → 匹配时注入已知维度
+    clusterer = RuleCompetencyClusterer()
+    clusters = clusterer.cluster(jobs)
+    cache = CompetencyModelCache()
+    cached = cache.load()
+    cluster_dimensions: dict[str, list[str]] = {}
+    for cluster in clusters:
+        model = cached.get(cluster.role_key)
+        if model is not None:
+            cluster_dimensions[cluster.role_key] = [d.name for d in model.dimensions]
+    # 本批新模型：首个簇成员匹配结果中的 competency 维度固化（见 _decide_one）
+    built_models: dict[str, CompetencyModel] = {}
+
     semaphore = asyncio.Semaphore(effective_match_concurrency())
 
     async def _decide_one(job: Job) -> dict[str, object]:
         field_notes = assess(job)
+        role_key = clusterer.find_cluster(job) or _fallback_role_key(job)
+        known = cluster_dimensions.get(role_key)
         async with semaphore:
-            match = await matcher.match(profile, job, field_notes)
+            match = await matcher.match(profile, job, field_notes, known_dimensions=known)
+        # 簇模型未建 → 用本岗对齐结果的维度名固化（同类岗位复用框架）
+        if role_key not in built_models and match.competency:
+            built_models[role_key] = CompetencyModel(
+                role=job.title, role_key=role_key, level="",
+                dimensions=[{"name": a.dimension} for a in match.competency],
+                source=f"job:{job.id}",
+            )
         verdict = decide(match, profile.deal_breakers)
+        # 决策联动（M9）：岗位胜任力维度大量缺失（≥2 且均为 missing）→ 最高 hold
+        missing_dims = [a for a in match.competency if a.candidate_level == "missing"]
+        if verdict.value == "apply" and len(missing_dims) >= 2:
+            verdict = Verdict.HOLD
         reason = match.reasoning[0] if match.reasoning else verdict.value
         return {
             "job_id": job.id,
@@ -102,6 +130,7 @@ async def generate_report(
             "reason": reason,
             "risk_hits": [str(hit.get("label", "")) for hit in _risk_hits(field_notes)],
             "gaps": match.gaps,
+            "competency": [a.model_dump() for a in match.competency],
             "reflective_question": _reflective_question(job, match, field_notes, profile),
         }
 
@@ -110,6 +139,10 @@ async def generate_report(
     )
     for item in items:
         counts[str(item["verdict"])] += 1
+
+    # 本批新建的簇模型写缓存（同类岗位后续复用）
+    for model in built_models.values():
+        cache.put(model)
 
     if owns_conn:
         conn.close()
@@ -123,3 +156,10 @@ async def generate_report(
         },
         "items": items,
     }
+
+
+def _fallback_role_key(job: Job) -> str:
+    """cluster 未命中时的兜底 role_key（按 title 归一化，保证缓存可复用）。"""
+    from talentforge.sources.job_competency import _title_key
+
+    return _title_key(job.title) or f"job-{job.id}"

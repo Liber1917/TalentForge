@@ -384,3 +384,52 @@ test("XSS：推荐区 skill/description/why 与 gap evidence 注入一律转义"
   assert.doesNotMatch(gapHtml, /<img src=x/);
   assert.match(gapHtml, /&lt;script&gt;/);
 });
+
+/* ---------- M9 岗位胜任力模型折叠区 ---------- */
+
+test("renderCompetencyBlock：6 维 × 强度徽章 + 证据引用/缺口说明", () => {
+  const html = Jobs.renderCompetencyBlock({
+    competency: [
+      { dimension: "认知复杂度", candidate_level: "strong", evidence_refs: ["做过分布式系统设计"], gap_note: "" },
+      { dimension: "韧性", candidate_level: "partial", evidence_refs: ["长期坚持开源"], gap_note: "需更多压力场景证据" },
+      { dimension: "协作意识", candidate_level: "missing", evidence_refs: [], gap_note: "JD 要求跨团队协作，画像无证据" },
+    ],
+  });
+  assert.match(html, /岗位胜任力模型（3 维）/);
+  assert.match(html, />认知复杂度</);
+  assert.match(html, /status-pill--active/);
+  assert.match(html, />证据充分</);
+  assert.match(html, />部分证据</);
+  assert.match(html, />无证据</);
+  assert.match(html, /status-pill--trial/);
+  assert.match(html, /status-pill--archived/);
+  assert.match(html, /做过分布式系统设计/);
+  assert.match(html, /需更多压力场景证据/);
+});
+
+test("renderCompetencyBlock：无 competency 返回空、缺省 level 归 missing", () => {
+  assert.equal(Jobs.renderCompetencyBlock({}), "");
+  assert.equal(Jobs.renderCompetencyBlock({ competency: [] }), "");
+  const html = Jobs.renderCompetencyBlock({
+    competency: [{ dimension: "韧性", candidate_level: "bogus", evidence_refs: [], gap_note: "" }],
+  });
+  assert.match(html, /无证据/);
+  assert.match(html, /status-pill--archived/);
+});
+
+test("renderCompetencyBlock XSS：维度/证据/缺口一律转义", () => {
+  const html = Jobs.renderCompetencyBlock({
+    competency: [
+      {
+        dimension: '<script>alert(1)</script>',
+        candidate_level: "missing",
+        evidence_refs: ['<img src=x onerror=alert(2)>'],
+        gap_note: '<svg onload=alert(3)>',
+      },
+    ],
+  });
+  assert.match(html, /&lt;script&gt;/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.doesNotMatch(html, /<svg/);
+});

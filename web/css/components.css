@@ -678,6 +678,61 @@
   gap: var(--space-1);
 }
 
+/* ---------- M9 岗位胜任力模型折叠区 ---------- */
+.job-detail__competency {
+  margin-top: var(--space-5);
+  border-top: 1px dashed var(--border-strong);
+  padding-top: var(--space-3);
+}
+.job-detail__competency-summary {
+  list-style: none;
+  cursor: pointer;
+  margin: 0;
+}
+.job-detail__competency-summary::-webkit-details-marker { display: none; }
+.job-detail__competency-summary:hover { color: var(--text-primary); }
+.job-detail__competency-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.competency-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-inner);
+  background-color: var(--surface-secondary);
+}
+.competency-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.competency-row__dimension { font-size: var(--fs-body-sm); }
+.competency-row__refs {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.competency-row__gap {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--text-tertiary);
+}
+/* ---------- 胜任力折叠区移动端（375 档）：徽章换行 ---------- */
+@media (max-width: 639px) {
+  .competency-row__head { align-items: flex-start; }
+}
+
 .job-detail__chat { margin-top: var(--space-5); }
 
 /* ---------- 工作台移动端：搜索框整行、报告按钮整行 ---------- */

@@ -31,3 +31,5 @@ class Match(BaseModel):
     missing_dimensions: list[str] = Field(default_factory=list)
     # JD×画像落差（M6 信号投资循环：[{skill,severity,evidence}]，LLM 未输出 → 空）
     gaps: list[dict[str, str]] = Field(default_factory=list)
+    # 岗位胜任力逐维对齐（M9：岗位侧建模，画像证据逐维评估；LLM 未输出 → 空）
+    competency: list[object] = Field(default_factory=list)

@@ -51,6 +51,13 @@ const TalentForgeJobs = (() => {
   };
   /* M6 gap severity 中文（major=risk 色徽章 / minor=灰徽章） */
   const SEVERITY_LABEL = { major: "主要", minor: "次要" };
+  /* M9 岗位胜任力：candidate_level → 徽章语义（复用 status-pill 三态配色） */
+  const COMPETENCY_LEVEL_LABEL = { strong: "证据充分", partial: "部分证据", missing: "无证据" };
+  const COMPETENCY_LEVEL_PILL = {
+    strong: "status-pill status-pill--active",
+    partial: "status-pill status-pill--trial",
+    missing: "status-pill status-pill--archived",
+  };
   const SUGGEST_NO_GAPS_HINT = "该岗位暂无 gap 分析——先在对话页跑一次决策";
   const SUGGEST_LOADING_TEXT = "找项目中…";
   const SUGGEST_ERROR_TEXT = "推荐失败：后端未启动";
@@ -446,6 +453,41 @@ const TalentForgeJobs = (() => {
       .join("");
   }
 
+  /** 岗位胜任力折叠区（M9）：6 维 × 画像证据强度徽章 + 证据引用/缺口说明。 */
+  function renderCompetencyBlock(job) {
+    const competency = Array.isArray(job.competency) ? job.competency : [];
+    if (!competency.length) return "";
+    const rows = competency.map(renderCompetencyRow).join("");
+    return `
+        <details class="job-detail__section job-detail__competency">
+          <summary class="job-detail__sub job-detail__competency-summary">岗位胜任力模型（${competency.length} 维）</summary>
+          <div class="job-detail__competency-list">
+            ${rows}
+          </div>
+        </details>`;
+  }
+
+  /** 单维：维度名 + 强度徽章 + 证据引用/缺口说明。 */
+  function renderCompetencyRow(assessment) {
+    const level = String((assessment && assessment.candidate_level) || "missing");
+    const levelPill = COMPETENCY_LEVEL_PILL[level] || COMPETENCY_LEVEL_PILL.missing;
+    const levelLabel = COMPETENCY_LEVEL_LABEL[level] || "无证据";
+    const refs = Array.isArray(assessment && assessment.evidence_refs)
+      ? assessment.evidence_refs.map((r) => `<li>${esc(clip(String(r), 60))}</li>`).join("")
+      : "";
+    const gapNote = String((assessment && assessment.gap_note) || "").trim();
+    return `
+        <div class="competency-row">
+          <div class="competency-row__head">
+            <strong class="competency-row__dimension">${esc(assessment && assessment.dimension)}</strong>
+            <span class="${levelPill}">${esc(levelLabel)}</span>
+          </div>
+          ${refs ? `<ul class="competency-row__refs">${refs}</ul>` : ""}
+          ${gapNote && level !== "strong"
+            ? `<p class="competency-row__gap">${esc(clip(gapNote, 120))}</p>` : ""}
+        </div>`;
+  }
+
   /** 单条 gap：字符串 → 旧 <li> 形态；对象 → skill 粗体 + severity 徽章 + evidence 小字。 */
   function renderGapItem(gap) {
     if (gap != null && typeof gap === "object") {
@@ -603,6 +645,8 @@ const TalentForgeJobs = (() => {
           ${evidenceChain ? `<div class="job-detail__section">${evidenceChain}</div>` : ""}
 
           ${renderGapBlock(job)}
+
+          ${renderCompetencyBlock(job)}
 
           <button class="btn btn--primary job-detail__chat" type="button"
                   data-action="chat-about-job"
@@ -1073,6 +1117,8 @@ const TalentForgeJobs = (() => {
     fmtDay,
     fmtIsoDay,
     normalizeGaps,
+    renderCompetencyBlock,
+    renderCompetencyRow,
     renderEmptyState,
     renderEvidenceChain,
     renderFeedbackRow,
