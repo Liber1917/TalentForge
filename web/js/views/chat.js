@@ -316,6 +316,48 @@ const TalentForgeChat = (() => {
     return out;
   }
 
+  /** 首启引导卡（M10 分发）：四维就绪状态 → 三步引导；全部就绪返回空串。 */
+  function renderOnboardingCard(status) {
+    const s = status || {};
+    const steps = [
+      {
+        done: Boolean(s.profile),
+        label: "建立你的画像",
+        desc: "告诉顾问你的方向、技能与底线——一句话也行，对话里慢慢聊。",
+        action: '<a class="btn btn--ghost btn--sm onboarding-step__action" href="#/chat">开始对话</a>',
+      },
+      {
+        done: Boolean(s.extension),
+        label: "接入数据平台",
+        desc: "安装浏览器扩展（Boss/知乎/B站），浏览时岗位与行为自动入库；或到「平台源」配置。",
+        action: '<a class="btn btn--ghost btn--sm onboarding-step__action" href="#/sources">去配置平台源</a>',
+      },
+      {
+        done: Boolean(s.llm),
+        label: "配置模型服务",
+        desc: "在「模型」页填入你的 LLM API（OpenAI 兼容 base_url / key），匹配与决策依赖它。",
+        action: '<a class="btn btn--ghost btn--sm onboarding-step__action" href="#/llm">去配置模型</a>',
+      },
+    ];
+    const doneCount = steps.filter((st) => st.done).length;
+    if (doneCount === steps.length) return "";
+    const rows = steps.map((st, i) => `
+        <div class="onboarding-step ${st.done ? "is-done" : ""}">
+          <span class="onboarding-step__num">${st.done ? "✓" : i + 1}</span>
+          <div class="onboarding-step__body">
+            <span class="onboarding-step__label">${esc(st.label)}</span>
+            <p class="onboarding-step__desc">${esc(st.desc)}</p>
+            ${st.done ? "" : st.action}
+          </div>
+        </div>`).join("");
+    return `
+        <div class="onboarding-card" role="region" aria-label="开始使用 TalentForge">
+          <h3 class="onboarding-card__title">开始使用</h3>
+          <p class="onboarding-card__hint">完成下面几步，顾问就能帮你决策——已完成的打勾。</p>
+          <div class="onboarding-card__steps">${rows}</div>
+        </div>`;
+  }
+
   function renderChatTurn(turn) {
     const text = String(turn.text || "").trim();
     const cards = Array.isArray(turn.cards) ? turn.cards : [];
@@ -398,7 +440,30 @@ const TalentForgeChat = (() => {
       ];
     }
     stream.replaceChildren(...state.turns.map((t) => htmlToElement(renderChatTurn(t))));
+    if (state.turns.length === 0) {
+      await maybeShowOnboarding(stream);
+    }
     updatePendingCount();
+  }
+
+  /** 对话为空且新用户未就绪 → 注入首启引导卡（M10 分发）。 */
+  async function maybeShowOnboarding(stream) {
+    if (TalentForgeApi.USE_FIXTURES) return;
+    try {
+      const res = await fetch("/api/onboarding/status", {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const status = await res.json();
+      const card = renderOnboardingCard(status);
+      if (card) {
+        const el = htmlToElement(`<div class="chat-bubble chat-bubble--assistant chat-bubble--cards">${card}</div>`);
+        stream.appendChild(el);
+      }
+    } catch (err) {
+      /* 引导探测失败静默——后端未启动已有加载失败提示 */
+    }
   }
 
   function renderStream() {
@@ -691,6 +756,7 @@ const TalentForgeChat = (() => {
     normalizeTurn,
     renderCard,
     renderChatTurn,
+    renderOnboardingCard,
     renderClaimCard,
     renderDecisionCard,
     renderEvidenceChain,

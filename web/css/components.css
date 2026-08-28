@@ -1644,3 +1644,65 @@
   .direction-card__meta { margin-inline-start: 0; }
   .direction-card__actions .btn { flex: 1; }
 }
+
+/* ===================== 首启引导（M10 分发） ===================== */
+
+.onboarding-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-secondary);
+}
+.onboarding-card__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-card-title);
+  line-height: var(--lh-card-title);
+}
+.onboarding-card__hint {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-secondary);
+}
+.onboarding-card__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+.onboarding-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.onboarding-step__num {
+  flex: 0 0 auto;
+  width: var(--space-6);
+  height: var(--space-6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-body-sm);
+  font-weight: 500;
+}
+.onboarding-step.is-done .onboarding-step__num {
+  background-color: var(--ok-bg);
+  color: var(--ok);
+}
+.onboarding-step__body { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.onboarding-step__label { font-size: var(--fs-body-sm); font-weight: 500; }
+.onboarding-step__desc {
+  margin: 0;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body-sm);
+  color: var(--text-tertiary);
+}
+.onboarding-step__action { align-self: flex-start; margin-top: var(--space-1); }

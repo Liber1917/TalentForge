@@ -233,3 +233,45 @@ test("renderChatTurn assistant 文案中的视图提及被 linkify，user 泡不
   const u = Chat.renderChatTurn({ role: "user", text: "去『画像』看看", cards: [], at: "" });
   assert.doesNotMatch(u, /href="#\/profile"/);
 });
+
+/* ---------- M10 首启引导卡 ---------- */
+
+test("renderOnboardingCard：未就绪显示三步引导（画像/平台/模型）", () => {
+  const html = Chat.renderOnboardingCard({ profile: false, extension: false, llm: false });
+  assert.match(html, /onboarding-card/);
+  assert.match(html, />开始使用</);
+  assert.match(html, /建立你的画像/);
+  assert.match(html, /接入数据平台/);
+  assert.match(html, /配置模型服务/);
+  assert.match(html, /#\/sources/);
+  assert.match(html, /#\/llm/);
+  assert.doesNotMatch(html, /is-done/);
+});
+
+test("renderOnboardingCard：部分就绪打勾已完成步骤", () => {
+  const html = Chat.renderOnboardingCard({ profile: true, extension: false, llm: true });
+  assert.match(html, /is-done/);
+  assert.match(html, />✓</);
+  const doneCount = (html.match(/onboarding-step is-done/g) || []).length;
+  assert.equal(doneCount, 2);
+  // 模型已就绪 → 不显示"去配置模型"动作
+  assert.doesNotMatch(html, /去配置模型/);
+});
+
+test("renderOnboardingCard：全部就绪返回空串", () => {
+  assert.equal(
+    Chat.renderOnboardingCard({ profile: true, extension: true, llm: true }),
+    ""
+  );
+  // null/缺省 → 按未就绪显示引导（默认待配置）
+  assert.match(Chat.renderOnboardingCard(null), /onboarding-card/);
+  assert.match(Chat.renderOnboardingCard(undefined), /onboarding-card/);
+});
+
+test("renderOnboardingCard：文案安全（无脚本注入面）", () => {
+  const html = Chat.renderOnboardingCard({ profile: false, extension: false, llm: false });
+  // 静态文案无注入面；esc 对特殊字符生效由既有 esc 测试覆盖
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<img/);
+  assert.doesNotMatch(html, /onerror/);
+});

@@ -20,6 +20,7 @@ from talentforge.api.routes_explore import router as explore_router
 from talentforge.api.routes_feedback import router as feedback_router
 from talentforge.api.routes_jobs import router as jobs_router
 from talentforge.api.routes_llm import router as llm_router
+from talentforge.api.routes_onboarding import router as onboarding_router
 from talentforge.api.routes_profile import router as profile_router
 from talentforge.api.routes_report import router as report_router
 from talentforge.api.routes_resume import router as resume_router
@@ -114,6 +115,7 @@ def create_app(
     app.include_router(feedback_router)
     app.include_router(sources_router)
     app.include_router(llm_router)
+    app.include_router(onboarding_router)
     app.include_router(suggest_router)
     app.include_router(work_router)
     app.include_router(explore_router)
