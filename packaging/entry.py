@@ -16,10 +16,12 @@ from pathlib import Path
 
 
 def _data_dir() -> Path:
-    """用户数据目录：Windows %APPDATA%/TalentForge，其他平台 ~/.local/share/talentforge。"""
+    """用户数据目录（按平台约定）：Windows %APPDATA%，macOS Application Support，Linux XDG。"""
     if sys.platform == "win32":
         base = os.environ.get("APPDATA") or str(Path.home())
         return Path(base) / "TalentForge"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "TalentForge"
     return Path.home() / ".local" / "share" / "talentforge"
 
 
