@@ -18,8 +18,9 @@ AllowNoIcons=yes
 ; 单用户安装到 AppData（无需管理员权限，小白双击直接装）
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-; iscc 从仓库根调用（workflow: iscc packaging/installer.iss），路径相对仓库根
-OutputDir=dist
+; iscc 相对路径基于 iss 文件所在目录（packaging/），{#SourcePath} 即该目录；
+; exe 在仓库根 dist/，故用 {#SourcePath}..\dist
+OutputDir={#SourcePath}..\dist
 OutputBaseFilename=TalentForgeSetup-{#MyAppVersion}
 ; 图标：可选。放 packaging\icon.ico 后取消下一行注释即可带安装器图标。
 ; SetupIconFile=packaging\icon.ico
@@ -41,7 +42,7 @@ Name: "autostart"; Description: "开机自动启动 TalentForge"; GroupDescripti
 
 [Files]
 ; 主程序 + 数据目录（运行时创建）
-Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
