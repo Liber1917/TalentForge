@@ -29,7 +29,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Node ≥22：vitest 4 的 forks worker 依赖 markAsUncloneable（Node 22+ API），
+          # Node 20 会报 "webidl.util.markAsUncloneable is not a function"。24 与本地开发一致。
+          node-version: "24"
 
       - name: Build & test browser extension
         # extension/dist 含 manifest.json（构建脚本已 stage）——Load unpacked 直接指它，
