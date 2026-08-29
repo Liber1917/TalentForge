@@ -1,7 +1,8 @@
 name: Build Windows exe + installer
 
 # 触发：每次 push（含 PR merge）+ 手动（workflow_dispatch）+ 打 v* tag。
-# 产物：TalentForgeSetup.exe（Inno Setup 安装器，用户可指定安装路径）。
+# 产物：① TalentForgeSetup.exe（Inno Setup 安装器，用户可指定安装路径）
+#       ② talentforge-extension.zip（浏览器扩展，解压后 Load unpacked）
 # 注意：PyInstaller 不支持跨平台，Windows 的 exe 必须在 windows-latest 上打。
 # 每次 push 都构建 → 产物始终是最近代码，PR 合并即出新版（无 tag 也分发）。
 
@@ -25,6 +26,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build & test browser extension
+        # extension/dist 含 manifest.json（构建脚本已 stage）——Load unpacked 直接指它，
+        # zip 内容 = dist/*（manifest 在 zip 根）。
+        run: |
+          cd extension
+          npm ci
+          npm test
+          npm run build
+          Compress-Archive -Path dist/* -DestinationPath ../dist/talentforge-extension.zip -Force
+
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -41,11 +57,18 @@ jobs:
         run: |
           iscc packaging/installer.iss
 
-      - name: Upload artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TalentForge-Windows
           path: |
             dist/TalentForgeSetup*.exe
             dist/talentforge.exe
+          if-no-files-found: error
+
+      - name: Upload browser extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: talentforge-extension
+          path: dist/talentforge-extension.zip
           if-no-files-found: error

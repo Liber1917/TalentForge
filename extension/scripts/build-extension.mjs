@@ -35,3 +35,8 @@ for (const name of ["content/bilibili", "content/zhihu", "content/boss"]) {
     },
   });
 }
+
+// 3. Stage manifest into dist/ — the loadable folder needs manifest.json at
+// its root ("Load unpacked" points at dist/, and CI zips dist/ as-is).
+import { copyFileSync } from "node:fs";
+copyFileSync(new URL("../manifest.json", import.meta.url), new URL("../dist/manifest.json", import.meta.url));
