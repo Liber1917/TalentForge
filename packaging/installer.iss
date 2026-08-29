@@ -30,7 +30,9 @@ DisableProgramGroupPage=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; 注：Inno Setup 默认安装不含中文语言文件（ChineseSimplified.isl 需手动下载到 Languages 目录）。
+; 分发版先用英文（compiler:Default.isl 内置，无需外部文件）；后续要中文向导可把
+; ChineseSimplified.isl 放进仓库并在 CI 里拷到 Inno 安装目录。
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
