@@ -41,6 +41,7 @@ jobs:
           npm ci
           npm test
           npm run build
+          New-Item -ItemType Directory -Force -Path ../dist | Out-Null
           Compress-Archive -Path dist/* -DestinationPath ../dist/talentforge-extension.zip -Force
 
       - name: Install dependencies
