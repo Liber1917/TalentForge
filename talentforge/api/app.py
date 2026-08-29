@@ -75,6 +75,9 @@ def create_app(
         本地服务只服务本机浏览器与扩展——恶意网页对 127.0.0.1:8420 发请求时
         Origin 是攻击站点，必须拒绝。检查 Origin 头自身的 hostname 是否为本机
         （localhost/127.0.0.1）；无 Origin 头（curl/扩展 fetch/同源导航）放行。
+        例外：POST /api/events 放行三个采集平台域（扩展 content script 在
+        zhipin/bilibili/zhihu 页面内上报，Origin 是站点域）——该端点只做
+        校验式入库（事件进 trial 主张链，有用户确认闸门），无敏感读。
         """
         origin = request.headers.get("origin")
         if origin:
@@ -82,7 +85,16 @@ def create_app(
 
             host = urlparse(origin).hostname or ""
             if host not in ("127.0.0.1", "localhost"):
-                return JSONResponse(status_code=403, content={"detail": "forbidden origin"})
+                if not (
+                    request.url.path == "/api/events"
+                    and request.method == "POST"
+                    and (
+                        host.endswith(".zhipin.com")
+                        or host.endswith(".bilibili.com")
+                        or host.endswith(".zhihu.com")
+                    )
+                ):
+                    return JSONResponse(status_code=403, content={"detail": "forbidden origin"})
         return await call_next(request)
 
     app.state.conn = conn

@@ -1,12 +1,15 @@
 name: Build Windows exe + installer
 
-# 触发：手动（workflow_dispatch）或打 v* tag 时自动构建。
+# 触发：每次 push（含 PR merge）+ 手动（workflow_dispatch）+ 打 v* tag。
 # 产物：TalentForgeSetup.exe（Inno Setup 安装器，用户可指定安装路径）。
 # 注意：PyInstaller 不支持跨平台，Windows 的 exe 必须在 windows-latest 上打。
+# 每次 push 都构建 → 产物始终是最近代码，PR 合并即出新版（无 tag 也分发）。
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - "**"
     tags:
       - "v*"
 

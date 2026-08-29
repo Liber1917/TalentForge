@@ -109,3 +109,33 @@ def test_debug_endpoint_removed(tmp_path: Path, monkeypatch: Any) -> None:
     resp = client.post("/api/debug", json={"kind": "test"})
     # 404=路由不存在；405=静态挂载兜底对 POST 的方法拒绝——两者都证明 /api/debug 端点已删
     assert resp.status_code in (404, 405)
+
+
+# ---------------- 扩展事件上报放行（M10 修正：采集平台域） ----------------
+
+
+def test_events_allows_platform_origins(tmp_path: Path, monkeypatch: Any) -> None:
+    """扩展 content script 在 zhipin/bilibili/zhihu 页面内上报 → 必须放行（采集链路）。"""
+    client = _client(tmp_path, monkeypatch)
+    for origin in (
+        "https://www.zhipin.com",
+        "https://www.bilibili.com",
+        "https://www.zhihu.com",
+    ):
+        resp = client.post(
+            "/api/events", headers={"Origin": origin}, json={"events": []}
+        )
+        assert resp.status_code in (200, 400), f"{origin} 应放行到事件端点"
+
+
+def test_events_still_blocks_evil_origins(tmp_path: Path, monkeypatch: Any) -> None:
+    """恶意站点 Origin 即使打 /api/events 也拒绝；平台域打其他端点同样拒绝。"""
+    client = _client(tmp_path, monkeypatch)
+    evil_events = client.post(
+        "/api/events", headers={"Origin": "https://evil.example.com"}, json={"events": []}
+    )
+    assert evil_events.status_code == 403
+    platform_other = client.get(
+        "/api/health", headers={"Origin": "https://www.bilibili.com"}
+    )
+    assert platform_other.status_code == 403

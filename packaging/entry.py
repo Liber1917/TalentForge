@@ -31,10 +31,33 @@ def _browser_open_later(url: str) -> None:
     webbrowser.open(url)
 
 
+def _is_talentforge_running(url: str) -> bool:
+    """探测端口上是否已是 TalentForge 实例（GET /api/health 返回 ok）。"""
+    import json
+    from urllib.request import urlopen
+
+    try:
+        with urlopen(f"{url.rstrip('/')}/api/health", timeout=2) as resp:
+            return bool(json.loads(resp.read().decode("utf-8")).get("ok"))
+    except Exception:  # noqa: BLE001 — 超时/非 JSON/连接拒绝 → 不是我们的实例
+        return False
+
+
 def main() -> None:
     import uvicorn
 
     from talentforge.api.app import create_app
+
+    host, port = "127.0.0.1", 8420
+    url = f"http://{host}:{port}/"
+
+    # 单实例处理：已有 TalentForge 在跑 → 直接开浏览器聚焦，不重复起服务
+    if _is_talentforge_running(url):
+        try:
+            webbrowser.open(url)
+        except Exception:  # noqa: BLE001 — 无浏览器环境静默
+            pass
+        return
 
     # 切到用户数据目录：全站 data/ 相对路径在此可写（exe 双击 cwd 不可控）
     data_dir = _data_dir()
@@ -51,8 +74,7 @@ def main() -> None:
             app_module.DEFAULT_WEB_DIR = candidate
 
     app = create_app()
-    host, port = "127.0.0.1", 8420
-    threading.Thread(target=_browser_open_later, args=(f"http://{host}:{port}/",), daemon=True).start()
+    threading.Thread(target=_browser_open_later, args=(url,), daemon=True).start()
     uvicorn.run(app, host=host, port=port)
 
 
