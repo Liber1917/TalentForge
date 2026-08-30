@@ -1,5 +1,9 @@
 # M2b 规格 — 插件内容采集（B站 + 知乎）最小闭环
 
+> ⚠️ 修订记录：本 spec 的采集口径已被 D25（扩展为唯一采集通道）修订——本里程碑的插件采集机制由"画像自长验证"升级为反爬平台唯一采集通道（Boss 岗位采集亦走扩展，服务器侧抓取移除）。失效验收项以下方 ✅/❌ 注记标明现状。
+>
+> 📌 现状补充（2026-08）：扩展现已覆盖三平台——bilibili / zhihu / zhipin（Boss，extension/manifest.json），其中 Boss 适配器（extension/src/content/boss.ts）即 D25 岗位采集通道，超出本 spec"最小闭环，不铺 8 平台"的原始范围；另支持 Firefox 构建目标（`npm run build:firefox`，extension/FIREFOX.md，commit d047074）。
+
 > 依据：spec-mvp-design.md §10 + D7/D22 + m2-extension-recon.md（插件架构侦察：核心循环 ~2100 行、每平台 ~220 行、OpenBiliClaw 三层模型 kernel+adapter+tap）。
 
 ## 交付范围

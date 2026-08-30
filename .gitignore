@@ -13,5 +13,8 @@ build/
 # SDD scratch workspace
 .superpowers/
 
+# OpenCode 运行时状态（会话续跑等）
+.omo/
+
 # 运行时 SQLite / 本地数据产物
 data/

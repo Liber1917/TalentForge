@@ -1,5 +1,9 @@
 # M3 Web 界面规格
 
+> ⚠️ 修订记录：本 spec 的验收口径已被 D25（扩展为唯一采集通道）部分修订——服务器侧抓取（BossScraper/playwright/cookie 链路）已移除，岗位采集走浏览器扩展 content script，报告管线消费库内岗位（report/generate.py）。失效验收项以下方 ✅/❌ 注记标明现状。
+>
+> 📌 现状补充（2026-08）：本文"三视图"现为六视图 + /cv——#/chat、#/jobs、#/profile 之上新增 #/sources（平台源+作品源）、#/llm（LLM 设置，M8）、#/explore（方向探索器，M7），另简历产出页 /cv（D28）；视图清单见 web/js/views/。"三视图"字样下文未逐处改写，以本注为准。
+
 > 依据：D21（交互全走 Web）、D11（反思性决策对话）、D9（三元+可解释链）、D13（提问式非灌输）、D17（证据原则）、D20（主张 α 机制+确认操作）、DESIGN.md（视觉系统）。本文定义三页面的布局/组件/状态/数据契约；视觉 token 全部引用 DESIGN.md，不重复定义。
 
 ## 0. 技术形态
@@ -143,5 +147,6 @@ RiskNote:    {type, key, label, why}
 
 - 三页面可离线演示：假数据 JSON 驱动全部卡片渲染（无 LLM 也能看界面）
 - 对话页端到端：真问一句"帮我看看深圳后端岗"→ 决策卡流入
+  - ✅ 注记（2026-08，D25 后现状）：现为消费库内岗位、空库给引导文案——决策意图跑 generate_report 时 jobs 从库注入（api/routes_chat.py:143），库空则返回引导文案而非现抓；"真问→服务器现抓→决策卡"链路需先经扩展采集入库。
 - 主张确认：对话页/画像页任一处确认 → 两页状态同步
 - 视觉：DESIGN.md token 全落地（无裸 hex），Primitive Showcase 通过（Card/VerdictBadge/ClaimCard/EvidenceChain 四原语先过 375/768/1280 三断点）
