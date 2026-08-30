@@ -1,36 +1,39 @@
-import pytest
+"""D15 协议契约：真实实现满足协议，且协议签名与现实对齐。
 
-from talentforge.protocols import ProfileEngine, Matcher, SourceAdapter
-from talentforge.domain.profile import Profile
-from talentforge.domain.feedback import FeedbackEvent
-from talentforge.domain.job import Job
+runtime_checkable 的 isinstance 只查方法名不查签名——签名漂移必须用
+inspect 逐参数比对（protocols.py 曾因此纸面化：Matcher 协议签名与
+CoarseMatcher 实现不匹配，全仓库无人发现）。
+"""
 
+from __future__ import annotations
 
-class _FakeProfileEngine:
-    async def build_profile(self, explicit: dict) -> Profile:
-        return Profile(name=explicit["name"])
+import inspect
 
-    async def update_from_feedback(self, profile: Profile, event: FeedbackEvent) -> Profile:
-        return profile
-
-
-@pytest.mark.asyncio
-async def test_profile_engine_is_structurally_satisfied():
-    engine = _FakeProfileEngine()
-    assert isinstance(engine, ProfileEngine)
-    p = await engine.build_profile({"name": "张三"})
-    assert p.name == "张三"
+from talentforge.competency.builder import DefaultCompetencyModelBuilder
+from talentforge.matcher.coarse import CoarseMatcher
+from talentforge.profile.engine import DefaultProfileEngine
+from talentforge.protocols import CompetencyModelBuilder, Matcher, ProfileEngine
 
 
-class _FakeSource:
-    source = "boss"
-
-    async def scrape_jobs(self, query: str, limit: int = 20) -> list[Job]:
-        return []
+class _FakeLLM:
+    async def chat(self, system: str, user: str, max_tokens: int | None = None) -> str:
+        return ""
 
 
-@pytest.mark.asyncio
-async def test_source_adapter_protocol_attr():
-    adapter = _FakeSource()
-    assert isinstance(adapter, SourceAdapter)
-    assert adapter.source == "boss"
+def test_matcher_protocol_signature_matches_reality() -> None:
+    """协议签名 = CoarseMatcher 现实签名（D25 后：field_notes + known_dimensions）。"""
+    proto = list(inspect.signature(Matcher.match).parameters)
+    real = list(inspect.signature(CoarseMatcher.match).parameters)
+    assert proto == real, f"协议签名漂移：Matcher{proto} != CoarseMatcher{real}"
+
+
+def test_real_matcher_satisfies_protocol() -> None:
+    assert isinstance(CoarseMatcher(_FakeLLM()), Matcher)
+
+
+def test_real_profile_engine_satisfies_protocol() -> None:
+    assert isinstance(DefaultProfileEngine(_FakeLLM()), ProfileEngine)
+
+
+def test_real_competency_builder_satisfies_protocol() -> None:
+    assert isinstance(DefaultCompetencyModelBuilder(_FakeLLM()), CompetencyModelBuilder)

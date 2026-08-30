@@ -9,7 +9,7 @@ from __future__ import annotations
 from talentforge.domain.profile import ClaimSource, NarrativeClaim, Profile
 from talentforge.llm.client import LLMClient
 from talentforge.llm.json_utils import extract_json
-from talentforge.profile.engine import DefaultProfileEngine
+from talentforge.protocols import ProfileEngine
 
 EVENT_TO_CLAIM_SYSTEM_PROMPT = (
     "你是求职者画像构建器。根据用户消息中的行为事件批（B站/知乎浏览点击记录），"
@@ -76,7 +76,7 @@ def _merge_claims(
 class ProfileUpdatePipeline:
     """事件批 → trial claims 的信号累积管道（α 待定池）。"""
 
-    def __init__(self, llm: LLMClient, engine: DefaultProfileEngine | None = None) -> None:
+    def __init__(self, llm: LLMClient, engine: ProfileEngine | None = None) -> None:
         self._llm = llm
         self._engine = engine
 

@@ -14,7 +14,7 @@ import os
 import sqlite3
 from typing import Any
 
-from talentforge.decision.verdict import Verdict, decide
+from talentforge.decision.build import build_decision
 from talentforge.domain.competency import CompetencyModel
 from talentforge.domain.job import Job
 from talentforge.domain.match import Match
@@ -23,6 +23,7 @@ from talentforge.field.risks import assess
 from talentforge.llm.client import EnvLLMClient
 from talentforge.llm.settings import effective_match_concurrency
 from talentforge.matcher.coarse import CoarseMatcher
+from talentforge.protocols import Matcher
 from talentforge.sources.job_competency import CompetencyModelCache, RuleCompetencyClusterer
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db, upsert_job
 
@@ -56,7 +57,7 @@ async def generate_report(
     query: str,
     city: str,
     limit: int = 10,
-    matcher: CoarseMatcher | None = None,
+    matcher: Matcher | None = None,
     conn: sqlite3.Connection | None = None,
     jobs: list[Job] | None = None,
 ) -> dict[str, Any]:
@@ -110,23 +111,26 @@ async def generate_report(
                 dimensions=[{"name": a.dimension} for a in match.competency],
                 source=f"job:{job.id}",
             )
-        verdict = decide(match, profile.deal_breakers)
-        # 决策联动（M9）：岗位胜任力维度大量缺失（≥2 且均为 missing）→ 最高 hold
-        missing_dims = [a for a in match.competency if a.candidate_level == "missing"]
-        if verdict.value == "apply" and len(missing_dims) >= 2:
-            verdict = Verdict.HOLD
-        reason = match.reasoning[0] if match.reasoning else verdict.value
+        # D15 核心：决策组装（象限+结构调制+M9 联动调制）收编 decision/build，
+        # 报告 item 从 Decision 序列化（落库/导出共用同一事实源）
+        decision = build_decision(
+            job,
+            match,
+            risk_labels=[str(hit.get("label", "")) for hit in _risk_hits(field_notes)],
+            profile=profile,
+            reflective_question=_reflective_question(job, match, field_notes, profile),
+        )
         return {
-            "job_id": job.id,
+            "job_id": decision.job_id,
             "title": job.title,
             "company": job.company,
             "url": job.url,
-            "verdict": verdict.value,
-            "reason": reason,
-            "risk_hits": [str(hit.get("label", "")) for hit in _risk_hits(field_notes)],
-            "gaps": match.gaps,
-            "competency": [a.model_dump() for a in match.competency],
-            "reflective_question": _reflective_question(job, match, field_notes, profile),
+            "verdict": decision.verdict.value,
+            "reason": decision.reason,
+            "risk_hits": decision.risk_hits,
+            "gaps": decision.gap,
+            "competency": decision.competency,
+            "reflective_question": decision.reflective_question,
         }
 
     items: list[dict[str, object]] = list(
