@@ -3,10 +3,10 @@
 
 a = Analysis(
     ['packaging/entry.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
     datas=[('web', 'web')],
-    hiddenimports=['uvicorn.logging', 'uvicorn.loops.auto', 'uvicorn.protocols.http.auto', 'uvicorn.protocols.websockets.auto', 'uvicorn.lifespan.on'],
+    hiddenimports=['talentforge', 'uvicorn.logging', 'uvicorn.loops.auto', 'uvicorn.protocols.http.auto', 'uvicorn.protocols.websockets.auto', 'uvicorn.lifespan.on'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -38,6 +38,9 @@ jobs:
           npm ci
           npm test
           npm run build
+          # 火狐目标一并构建（构建脚本内嵌冒烟：manifest 可解析、脚本非空、
+          # background 形态与目标匹配——打包正确性随构建即验，产物不对外发布）
+          npm run build:firefox
           mkdir -p ../dist
           (cd dist && zip -qr ../../dist/talentforge-extension.zip .)
 
@@ -69,8 +72,50 @@ jobs:
           pip install pyinstaller cryptography "pydantic>=2.7" "click>=8.1" "fastapi>=0.115" "uvicorn>=0.32" "python-multipart>=0.0.9" "httpx>=0.27" "pypdf>=6.0" "python-docx>=1.1" "beautifulsoup4>=4.12" "jinja2>=3.1"
 
       - name: Build exe with PyInstaller
-        # 直接用 talentforge.spec（datas 为平台无关元组形式）
+        # 直接用 talentforge.spec（datas 为平台无关元组形式）。
+        # 注意：本环境刻意不安装 talentforge 包（只装第三方依赖）——
+        # spec 必须凭 pathex=['.'] 自举发现源码树；曾因此漏洞（pathex=[]）
+        # 产出一批必炸 exe（ModuleNotFoundError: talentforge），由下方冒烟步骤拦截。
         run: pyinstaller --noconfirm talentforge.spec
+
+      # ---------- 打包正确性验证：跑起来才算打包成功 ----------
+      # 验证三件事：①exe 可启动（依赖/隐藏导入收录完整）②/api/health 返回 ok
+      # ③静态 web/ 已随 datas 打入并经 _MEIPASS 正确挂载（GET / 返回 200）。
+      - name: Smoke test exe (unix)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x dist/talentforge
+          ./dist/talentforge > smoke.log 2>&1 &
+          PID=$!
+          ok=0
+          for i in $(seq 1 40); do
+            if curl -sf -m 2 http://127.0.0.1:8420/api/health 2>/dev/null | grep -q '"ok" *: *true'; then ok=1; break; fi
+            sleep 2
+          done
+          home=$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:8420/ || true)
+          kill $PID 2>/dev/null || true
+          tail -20 smoke.log
+          [ "$ok" = "1" ] && [ "$home" = "200" ]
+
+      - name: Smoke test exe (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\talentforge.exe" -PassThru `
+            -RedirectStandardError smoke_err.txt -RedirectStandardOutput smoke_out.txt
+          $ok = $false
+          foreach ($i in 1..40) {
+            try {
+              $r = Invoke-RestMethod -Uri "http://127.0.0.1:8420/api/health" -TimeoutSec 2
+              if ($r.ok) { $ok = $true; break }
+            } catch { Start-Sleep 2 }
+          }
+          $home = 0
+          try { $home = (Invoke-WebRequest -Uri "http://127.0.0.1:8420/" -UseBasicParsing -TimeoutSec 5).StatusCode } catch {}
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (Test-Path smoke_err.txt) { Get-Content smoke_err.txt -Tail 20 }
+          if (-not $ok) { Write-Error "smoke failed: /api/health not ok"; exit 1 }
+          if ($home -ne 200) { Write-Error "smoke failed: GET / = $home"; exit 1 }
 
       # ---------- Windows：Inno Setup 安装器 ----------
       - name: Install Inno Setup
