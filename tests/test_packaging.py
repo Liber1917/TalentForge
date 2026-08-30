@@ -156,3 +156,42 @@ def test_ci_unix_smoke_script_parses_and_asserts():
     assert result.returncode == 0, f"bash -n 解析失败：{result.stderr}"
     assert "api/health" in script, "冒烟脚本未探测 /api/health"
     assert "200" in script, "冒烟脚本未断言静态首页 HTTP 200"
+
+
+_PWSH_READONLY_AUTO_VARS = (
+    "home",
+    "pid",
+    "host",
+    "pwd",
+    "args",
+    "input",
+    "profile",
+    "myinvocation",
+    "error",
+    "matches",
+    "psstyle",
+    "psitem",
+    "true",
+    "false",
+    "null",
+)
+
+
+def test_ci_windows_smoke_script_avoids_readonly_auto_variables():
+    """pwsh 冒烟脚本不得给只读自动变量赋值（本机无 pwsh，用静态契约兜底）。
+
+    历史事故：`$home = 0` 撞上 PowerShell 只读自动变量 $HOME，
+    Windows 冒烟必炸（Cannot overwrite variable HOME because it is
+    read-only or constant）。赋值形如 `$var =`（含 `+=`/`-=` 前置形式）
+    命中黑名单即失败。
+    """
+    import re
+
+    script = _step_run_script("Smoke test exe (windows)")
+    assignment_re = re.compile(r"\$(\w+)\s*(?:=[^=]|-=|\+=)")
+    assigned = {m.group(1).lower() for m in assignment_re.finditer(script)}
+    collisions = sorted(assigned & set(_PWSH_READONLY_AUTO_VARS))
+    assert not collisions, (
+        f"pwsh 冒烟脚本给只读自动变量赋值：{collisions}——"
+        "Windows CI 将以 read-only variable 报错退出（改用普通变量名）"
+    )

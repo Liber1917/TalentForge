@@ -110,12 +110,13 @@ jobs:
               if ($r.ok) { $ok = $true; break }
             } catch { Start-Sleep 2 }
           }
-          $home = 0
-          try { $home = (Invoke-WebRequest -Uri "http://127.0.0.1:8420/" -UseBasicParsing -TimeoutSec 5).StatusCode } catch {}
+          # 注意：pwsh 只读自动变量（$HOME/$PID 等）不可赋值——曾因 $home 撞 $HOME 全红
+          $homeStatus = 0
+          try { $homeStatus = (Invoke-WebRequest -Uri "http://127.0.0.1:8420/" -UseBasicParsing -TimeoutSec 5).StatusCode } catch {}
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           if (Test-Path smoke_err.txt) { Get-Content smoke_err.txt -Tail 20 }
           if (-not $ok) { Write-Error "smoke failed: /api/health not ok"; exit 1 }
-          if ($home -ne 200) { Write-Error "smoke failed: GET / = $home"; exit 1 }
+          if ($homeStatus -ne 200) { Write-Error "smoke failed: GET / = $homeStatus"; exit 1 }
 
       # ---------- Windows：Inno Setup 安装器 ----------
       - name: Install Inno Setup
