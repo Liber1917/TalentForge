@@ -1,9 +1,24 @@
 // Background service worker: receives BEHAVIOR_EVENT → buffer → periodic flush to backend.
+// On Firefox the same bundle runs as an event page (background.scripts) — the
+// chrome.* namespace is an alias of browser.* there, so promise usage works.
 import { claimBuffer, enqueueEvent, flushBuffer } from "./buffer";
+import { clampAlarmPeriodForFirefox } from "../shared/firefox";
 import type { BehaviorEvent } from "../shared/types";
 
 export const FLUSH_ALARM_NAME = "talentforge-flush";
 export const FLUSH_PERIOD_MINUTES = 0.5;
+
+// Firefox 暴露全局 browser 命名空间而 Chrome 没有（webextension-polyfill 的
+// 同款判别法）——以此选择 alarm 周期，不依赖浏览器对 <1min 周期的隐式钳制。
+export function isFirefoxRuntime(): boolean {
+  const browserApi = (globalThis as { browser?: unknown }).browser;
+  return typeof browserApi === "object" && browserApi !== null;
+}
+
+/** Firefox 会把 <1 分钟的 alarm 周期钳到 1 分钟；显式取有效值。 */
+export function effectiveFlushPeriodMinutes(): number {
+  return clampAlarmPeriodForFirefox(FLUSH_PERIOD_MINUTES, isFirefoxRuntime());
+}
 
 async function handleBehaviorEvent(event: BehaviorEvent): Promise<void> {
   const full = await enqueueEvent(event);
@@ -48,7 +63,7 @@ export function initServiceWorker(): void {
 
   if (chromeApi.alarms?.create) {
     chromeApi.alarms.create(FLUSH_ALARM_NAME, {
-      periodInMinutes: FLUSH_PERIOD_MINUTES,
+      periodInMinutes: effectiveFlushPeriodMinutes(),
     });
   }
 

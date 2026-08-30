@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-extension.mjs",
+    "build:firefox": "node scripts/build-extension.mjs --target=firefox",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

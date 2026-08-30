@@ -95,4 +95,17 @@ describe("kernel", () => {
     document.querySelector("button")!.click();
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it("swallows a rejected sendMessage promise instead of leaving it unhandled", async () => {
+    // Chrome 99+/Firefox return a Promise from sendMessage when no callback is
+    // passed (e.g. "port closed" on Firefox event-page unload).
+    const sendMessage = vi.fn(() => Promise.reject(new Error("port closed")));
+    vi.stubGlobal("chrome", { runtime: { sendMessage } });
+    document.body.innerHTML = '<button id="like" data-action="like">赞</button>';
+    const collector = startCollector(makeAdapter());
+    document.getElementById("like")!.click();
+    await new Promise((resolve) => setTimeout(resolve, 0)); // 让潜在的 unhandled rejection 暴露
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    collector.dispose();
+  });
 });

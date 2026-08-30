@@ -17,9 +17,21 @@ const URL_POLL_MS = 1_500;
 function sendMessage(msg: unknown): void {
   try {
     const chromeApi = (
-      globalThis as { chrome?: { runtime?: { sendMessage?: (message: unknown) => void } } }
+      globalThis as {
+        chrome?: { runtime?: { sendMessage?: (message: unknown) => unknown } };
+      }
     ).chrome;
-    chromeApi?.runtime?.sendMessage?.(msg);
+    const sent = chromeApi?.runtime?.sendMessage?.(msg);
+    // Chrome 99+/Firefox return a Promise when no callback is passed (e.g. a
+    // closed port on the Firefox side). Collection is fire-and-forget, so
+    // swallow the rejection instead of leaving it unhandled in the console.
+    if (
+      typeof sent === "object" &&
+      sent !== null &&
+      typeof (sent as Promise<void>).catch === "function"
+    ) {
+      void (sent as Promise<void>).catch(() => {});
+    }
   } catch {
     // No runtime sender available (e.g. unit tests) — collection is best-effort.
   }

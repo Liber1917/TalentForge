@@ -7,8 +7,10 @@ import {
 import {
   FLUSH_ALARM_NAME,
   FLUSH_PERIOD_MINUTES,
+  effectiveFlushPeriodMinutes,
   initServiceWorker,
 } from "../background/service-worker";
+import { FIREFOX_MIN_ALARM_PERIOD_MINUTES } from "../shared/firefox";
 import type { BehaviorEvent } from "../shared/types";
 
 function makeEvent(id: string): BehaviorEvent {
@@ -86,6 +88,16 @@ describe("service-worker", () => {
     initServiceWorker();
     expect(createAlarm).toHaveBeenCalledWith(FLUSH_ALARM_NAME, {
       periodInMinutes: FLUSH_PERIOD_MINUTES,
+    });
+  });
+
+  it("clamps the flush alarm period to 1 minute when the browser global is present (Firefox)", () => {
+    const { createAlarm } = installChromeMock();
+    vi.stubGlobal("browser", {}); // Firefox 暴露全局 browser 命名空间，Chrome 没有
+    expect(effectiveFlushPeriodMinutes()).toBe(FIREFOX_MIN_ALARM_PERIOD_MINUTES);
+    initServiceWorker();
+    expect(createAlarm).toHaveBeenCalledWith(FLUSH_ALARM_NAME, {
+      periodInMinutes: FIREFOX_MIN_ALARM_PERIOD_MINUTES,
     });
   });
 
