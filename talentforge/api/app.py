@@ -6,13 +6,16 @@ Origin 校验（M10 安全批次）：本地服务默认只服务本机，拒绝
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from talentforge.api.common import load_profile
 from talentforge.api.events import handle_events
 from talentforge.api.routes_chat import router as chat_router
 from talentforge.api.routes_claims import router as claims_router
@@ -30,8 +33,13 @@ from talentforge.api.routes_work import router as work_router
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db
 
+logger = logging.getLogger(__name__)
+
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_WEB_DIR = _PACKAGE_ROOT / "web"
+# Host 白名单 = DNS rebinding 防线：同源 fetch 可省略 Origin 头，但浏览器无法伪造 Host。
+# testserver 是 Starlette TestClient 的约定 Host，仅测试流量使用。
+_ALLOWED_HOSTNAMES = ("127.0.0.1", "localhost", "::1", "testserver")
 
 
 def _default_conn() -> sqlite3.Connection:
@@ -70,19 +78,22 @@ def create_app(
 
     @app.middleware("http")
     async def origin_guard(request: Request, call_next):  # type: ignore[no-untyped-def]
-        """Origin 校验（M10）：拒绝跨站请求（CSRF），仅放行同源/本机来源。
+        """Host + Origin 双校验：拒绝跨站请求与 DNS rebinding。
 
-        本地服务只服务本机浏览器与扩展——恶意网页对 127.0.0.1:8420 发请求时
-        Origin 是攻击站点，必须拒绝。检查 Origin 头自身的 hostname 是否为本机
-        （localhost/127.0.0.1）；无 Origin 头（curl/扩展 fetch/同源导航）放行。
+        Host 校验：恶意页把域名重绑到 127.0.0.1 后浏览器视为同源 fetch（不带
+        Origin 头），但 Host 仍是 rebinder 域——非本机 Host 一律 403。
+        Origin 校验（M10）：恶意网页对 127.0.0.1:8420 发请求时 Origin 是攻击
+        站点，必须拒绝；无 Origin 头（curl/扩展 fetch/同源导航）放行。
         例外：POST /api/events 放行三个采集平台域（扩展 content script 在
         zhipin/bilibili/zhihu 页面内上报，Origin 是站点域）——该端点只做
         校验式入库（事件进 trial 主张链，有用户确认闸门），无敏感读。
         """
+        host_header = (request.headers.get("host") or "").strip()
+        hostname = urlparse(f"//{host_header}").hostname or "" if host_header else ""
+        if hostname not in _ALLOWED_HOSTNAMES:
+            return JSONResponse(status_code=403, content={"detail": "forbidden host"})
         origin = request.headers.get("origin")
         if origin:
-            from urllib.parse import urlparse
-
             host = urlparse(origin).hostname or ""
             if host not in ("127.0.0.1", "localhost"):
                 if not (
@@ -105,7 +116,8 @@ def create_app(
     # 画像快照（M10 回测地基）：决策落库时附带，供回测还原当时画像状态
     try:
         app.state.profile_snapshot = load_profile().model_dump(mode="json")
-    except Exception:  # noqa: BLE001 — 画像缺失不阻断服务启动
+    except (OSError, ValueError) as exc:  # 文件缺失/损坏不阻断启动；编程错误照常炸
+        logger.warning("画像快照加载失败（决策落库将无快照）: %s", exc)
         app.state.profile_snapshot = None
 
     @app.get("/api/health")

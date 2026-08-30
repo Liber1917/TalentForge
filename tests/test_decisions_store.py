@@ -43,6 +43,15 @@ def test_decisions_are_append_only() -> None:
     assert rows[0]["verdict"] == "apply"  # 倒序：最新在前
 
 
+def test_insert_decision_default_timestamp_is_utc_aware() -> None:
+    """缺省 decided_at 必须是 UTC aware——events/jobs 全为 UTC，naive 本地时间
+    与 aware 混存会让 ORDER BY decided_at / since 过滤（ISO 字符串比较）跨时区错乱。"""
+    conn = init_db(":memory:")
+    insert_decision(conn, "u1", "boss", "t", "A", "hold", "r", [], [])
+    row = conn.execute("SELECT decided_at FROM decisions").fetchone()
+    assert row[0].endswith("+00:00")
+
+
 def test_list_decisions_since_filter() -> None:
     conn = init_db(":memory:")
     now = datetime.now().isoformat()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from talentforge.domain.job import Job
@@ -214,7 +214,7 @@ def insert_decision(
 ) -> None:
     """落一条决策历史（append-only，回测地基）：每次决策都追加，不覆盖。"""
     if decided_at is None:
-        decided_at = datetime.now().isoformat()
+        decided_at = datetime.now(timezone.utc).isoformat()
     conn.execute(
         """
         INSERT INTO decisions

@@ -18,7 +18,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 
 from talentforge.llm.client import EnvLLMClient
-from talentforge.llm.settings import LLMSettingsStore, effective_settings
+from talentforge.llm.settings import LLMSettingsStore, effective_settings, same_origin_host
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,11 @@ async def verify_llm_settings(body: dict | None = None) -> dict:
     effective, _source = effective_settings()
     # 临时合并提交字段（仅本次 verify 生效，不保存）
     base_url = body.get("base_url", effective.base_url) or ""
-    api_key = body.get("api_key", effective.api_key) or ""
     model = body.get("model", effective.model) or ""
+    api_key = str(body.get("api_key") or "")
+    # key 只跟随同主机的已存配置：提交陌生主机 base 必须自带 key（防凭据转发外泄）
+    if not api_key and same_origin_host(base_url, effective.base_url):
+        api_key = effective.api_key
     if not base_url or not model:
         return {"ok": False, "detail": "未配置 base_url / model：请先填写再测试"}
     client = EnvLLMClient(

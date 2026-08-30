@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -93,3 +94,40 @@ def test_origin_guard_replaces_permissive_cors() -> None:
     # 跨站 Origin 拒绝
     evil = client.get("/api/health", headers={"Origin": "https://evil.example.com"})
     assert evil.status_code == 403
+
+
+def test_dns_rebinding_foreign_host_rejected() -> None:
+    """DNS rebinding：攻击页把域名重绑到 127.0.0.1 后，浏览器视为同源 fetch——
+    请求不带 Origin 头，仅查 Origin 的守卫会放行。Host 必须限本机。
+    """
+    client = _client()
+    assert client.get("/api/health", headers={"Host": "127.0.0.1:8420"}).status_code == 200
+    assert client.get("/api/health", headers={"Host": "localhost:8420"}).status_code == 200
+    assert client.get("/api/health", headers={"Host": "[::1]:8420"}).status_code == 200
+    evil = client.get("/api/health", headers={"Host": "evil.example.com:8420"})
+    assert evil.status_code == 403
+
+
+def test_profile_snapshot_loaded_when_file_present(tmp_path: Path, monkeypatch) -> None:
+    """画像文件存在时 create_app 必须加载快照。
+
+    曾因 load_profile 未导入，NameError 被 except Exception 静默吞掉——
+    快照恒为 None，M10 回测地基从未工作过。
+    """
+    profile = tmp_path / "profile.json"
+    profile.write_text(json.dumps({"name": "张三", "skills": ["python"]}), encoding="utf-8")
+    monkeypatch.setenv("TALENTFORGE_PROFILE_PATH", str(profile))
+    conn = init_db(":memory:", check_same_thread=False)
+    app = create_app(conn=conn)
+    assert app.state.profile_snapshot is not None
+    assert app.state.profile_snapshot["name"] == "张三"
+
+
+def test_profile_snapshot_none_when_file_missing(tmp_path: Path, monkeypatch) -> None:
+    """画像缺失不阻断启动：快照为 None，服务照常可用（except 路径不得炸）。"""
+    monkeypatch.setenv("TALENTFORGE_PROFILE_PATH", str(tmp_path / "absent.json"))
+    conn = init_db(":memory:", check_same_thread=False)
+    app = create_app(conn=conn)
+    assert app.state.profile_snapshot is None
+    client = TestClient(app)
+    assert client.get("/api/health").json() == {"ok": True}

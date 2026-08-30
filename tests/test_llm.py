@@ -114,6 +114,24 @@ def test_env_client_explicit_overrides_everything(tmp_path, monkeypatch):
     assert c._model == "explicit-model"
 
 
+def test_env_client_no_key_leak_across_hosts(tmp_path, monkeypatch):
+    """凭据只发往它配置时指向的主机：显式 base 与生效 base 不同主机且未给 key
+    → 不回退生效 key；同主机（含尾斜杠变体）正常继承。"""
+    import talentforge.llm.client as client_mod
+
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "missing.json")
+    monkeypatch.setenv("TALENTFORGE_LLM_BASE_URL", "https://env.test/v1")
+    monkeypatch.setenv("TALENTFORGE_LLM_API_KEY", "env-key")
+    monkeypatch.setenv("TALENTFORGE_LLM_MODEL", "env-model")
+
+    cross = client_mod.EnvLLMClient(base_url="https://other.test/v1", model="m")
+    assert cross._base_url == "https://other.test/v1"
+    assert cross._api_key == ""
+
+    same = client_mod.EnvLLMClient(base_url="https://env.test/v1/", model="m")
+    assert same._api_key == "env-key"
+
+
 def test_chat_retries_once_on_empty_content(tmp_path, monkeypatch):
     """空 content（思考模型偶发）自动重试一次，第二次有内容即返回（backlog 修复钉桩）。"""
     import httpx
@@ -155,6 +173,30 @@ def test_chat_returns_empty_after_second_empty(tmp_path, monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
         calls["n"] += 1
         return httpx.Response(200, json={"choices": [{"message": {"content": ""}}]})
+
+    client = client_mod.EnvLLMClient(transport=httpx.MockTransport(handler))
+    assert asyncio.run(client.chat("s", "u")) == ""
+    assert calls["n"] == 2
+
+
+def test_chat_null_content_treated_as_empty(tmp_path, monkeypatch):
+    """思考模型只出 reasoning 时 API 返回 content=null：str(None)="None" 是
+    truthy，会击穿空串重试并把字面量 "None" 送进 extract_json/决策链。
+    null 必须按空处理（重试一次，仍空则返回空串）。"""
+    import asyncio
+
+    import httpx
+    import talentforge.llm.client as client_mod
+
+    monkeypatch.setattr(client_mod, "_OPENCODE_AUTH", tmp_path / "missing.json")
+    monkeypatch.setenv("TALENTFORGE_LLM_BASE_URL", "https://llm.test/v1")
+    monkeypatch.setenv("TALENTFORGE_LLM_API_KEY", "k")
+    monkeypatch.setenv("TALENTFORGE_LLM_MODEL", "m")
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": None}}]})
 
     client = client_mod.EnvLLMClient(transport=httpx.MockTransport(handler))
     assert asyncio.run(client.chat("s", "u")) == ""

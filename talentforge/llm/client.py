@@ -23,7 +23,7 @@ from typing import Protocol
 
 import httpx
 
-from talentforge.llm.settings import effective_client_settings
+from talentforge.llm.settings import effective_client_settings, same_origin_host
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +76,12 @@ class EnvLLMClient:
     ) -> None:
         eff_base, eff_key, eff_model = effective_client_settings()
         self._base_url = (base_url or eff_base).rstrip("/")
-        self._api_key = api_key or eff_key
         self._model = model or eff_model
+        # 凭据只发往它配置时指向的主机：显式 base 与生效 base 不同主机且未给 key → 不回退生效 key
+        if api_key or not base_url or same_origin_host(base_url, eff_base):
+            self._api_key = api_key or eff_key
+        else:
+            self._api_key = ""
         self._transport = transport
         self._timeout = timeout
 
@@ -106,7 +110,8 @@ class EnvLLMClient:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                content = str(data["choices"][0]["message"]["content"])
+                raw = data["choices"][0]["message"]["content"]
+                content = raw if isinstance(raw, str) else ""
                 if content.strip() or attempt == 2:
                     return content
                 logger.info("LLM 空 content（attempt %s），重试一次", attempt)

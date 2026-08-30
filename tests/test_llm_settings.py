@@ -185,3 +185,113 @@ def test_verify_without_config_returns_friendly_failure(tmp_path: Path, monkeypa
     data = response.json()
     assert data["ok"] is False
     assert "未配置" in data["detail"]
+
+
+# ---------------- 安全：凭据不随陌生主机外发（外泄链封堵） ----------------
+
+
+def _isolate_llm_env(monkeypatch: Any, tmp_path: Path) -> Path:
+    """清空 env 三变量、指向 tmp 设置文件，返回设置文件路径。"""
+    for var in ("TALENTFORGE_LLM_BASE_URL", "TALENTFORGE_LLM_API_KEY", "TALENTFORGE_LLM_MODEL"):
+        monkeypatch.delenv(var, raising=False)
+    path = tmp_path / "llm.json"
+    monkeypatch.setenv("TALENTFORGE_LLM_SETTINGS_PATH", str(path))
+    return path
+
+
+def test_fallback_key_not_attached_to_custom_base_url(tmp_path: Path, monkeypatch: Any) -> None:
+    """文件存自定义 base（攻击者可经 POST /api/llm/settings 写入）时，
+    OpenCode 回退 key 不得生效——否则本机凭据被发往任意端点。"""
+    path = _isolate_llm_env(monkeypatch, tmp_path)
+    path.write_text(
+        json.dumps({"base_url": "https://evil.example.com/v1", "model": "m"}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        "talentforge.llm.client.resolve_opencode_credentials",
+        lambda: ("https://open.bigmodel.cn/api/coding/paas/v4", "fb-secret", "glm-5.3"),
+    )
+    settings, _source = llm_settings.effective_settings()
+    assert settings.base_url == "https://evil.example.com/v1"
+    assert settings.api_key == ""
+
+
+def test_fallback_key_attached_when_base_is_official(tmp_path: Path, monkeypatch: Any) -> None:
+    """回退 base（官方端点）配回退 key 的原有配对不受影响。"""
+    _isolate_llm_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "talentforge.llm.client.resolve_opencode_credentials",
+        lambda: ("https://api.deepseek.com", "sk-fallback", "deepseek-chat"),
+    )
+    settings, source = llm_settings.effective_settings()
+    assert source == "fallback"
+    assert settings.base_url == "https://api.deepseek.com"
+    assert settings.api_key == "sk-fallback"
+
+
+def test_env_key_pairs_custom_base_unchanged(tmp_path: Path, monkeypatch: Any) -> None:
+    """env key + 文件自定义 base = 用户部署种子自己的配对，不受影响。"""
+    path = _isolate_llm_env(monkeypatch, tmp_path)
+    monkeypatch.setenv("TALENTFORGE_LLM_API_KEY", "env-key")
+    path.write_text(
+        json.dumps({"base_url": "https://my-relay.example.com/v1", "model": "m"}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        "talentforge.llm.client.resolve_opencode_credentials",
+        lambda: ("https://api.deepseek.com", "sk-fallback", "deepseek-chat"),
+    )
+    settings, _source = llm_settings.effective_settings()
+    assert settings.api_key == "env-key"
+
+
+def _auth_capturing_transport(seen: dict) -> httpx.MockTransport:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["auth"] = request.headers.get("authorization")
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    return httpx.MockTransport(handler)
+
+
+def test_verify_custom_base_does_not_inherit_stored_key(tmp_path: Path, monkeypatch: Any) -> None:
+    """verify 提交陌生主机 base 且未提交 key：不得继承已存 key 外发。"""
+    path = _isolate_llm_env(monkeypatch, tmp_path)
+    path.write_text(
+        json.dumps(
+            {"base_url": "https://api.example.com/v1", "api_key": "sk-file-secret", "model": "m"}
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "talentforge.llm.client.resolve_opencode_credentials", lambda: ("", "", "")
+    )
+    seen: dict = {}
+    monkeypatch.setattr(routes_llm, "_VERIFY_TRANSPORT", _auth_capturing_transport(seen))
+    client = _client(monkeypatch, tmp_path)
+    response = client.post(
+        "/api/llm/settings/verify",
+        json={"base_url": "https://evil.example.com/v1", "model": "m"},
+    )
+    assert response.status_code == 200
+    assert seen.get("auth") in (None, "")
+
+
+def test_verify_same_base_inherits_stored_key(tmp_path: Path, monkeypatch: Any) -> None:
+    """verify 提交与已存同主机的 base：正常继承已存 key（合法配对）。"""
+    path = _isolate_llm_env(monkeypatch, tmp_path)
+    path.write_text(
+        json.dumps(
+            {"base_url": "https://api.example.com/v1", "api_key": "sk-file-secret", "model": "m"}
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "talentforge.llm.client.resolve_opencode_credentials", lambda: ("", "", "")
+    )
+    seen: dict = {}
+    monkeypatch.setattr(routes_llm, "_VERIFY_TRANSPORT", _auth_capturing_transport(seen))
+    client = _client(monkeypatch, tmp_path)
+    response = client.post(
+        "/api/llm/settings/verify",
+        json={"base_url": "https://api.example.com/v1", "model": "m"},
+    )
+    assert response.status_code == 200
+    assert seen.get("auth") == "Bearer sk-file-secret"

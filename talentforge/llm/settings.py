@@ -19,6 +19,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ValidationError
 
@@ -35,6 +36,9 @@ _ENV_KEY = "TALENTFORGE_LLM_API_KEY"
 _ENV_MODEL = "TALENTFORGE_LLM_MODEL"
 _ENV_CONCURRENCY = "TALENTFORGE_MATCH_CONCURRENCY"
 _DEFAULT_CONCURRENCY = 5
+# 回退 key（OpenCode 本地凭据）只发往官方端点：自定义 base 必须自带 key，
+# 否则写入恶意 base_url 即可让本机凭据外发任意主机（凭据外泄链）。
+_FALLBACK_KEY_ALLOWED_HOSTS = ("open.bigmodel.cn", "api.deepseek.com")
 
 
 class LLMSettings(BaseModel):
@@ -50,6 +54,16 @@ def settings_path() -> Path:
     """设置文件路径：env TALENTFORGE_LLM_SETTINGS_PATH > 运行时 data/llm_settings.json。"""
     env = os.environ.get(SETTINGS_ENV)
     return Path(env) if env else RUNTIME_SETTINGS_PATH
+
+
+def same_origin_host(left: str, right: str) -> bool:
+    """两个 base_url 的主机名是否相同（空串视为相同）——凭据跨主机不跟随。"""
+
+    def _host(value: str) -> str:
+        value = value.strip()
+        return (urlparse(value).hostname or "") if value else ""
+
+    return _host(left) == _host(right)
 
 
 class LLMSettingsStore:
@@ -145,7 +159,9 @@ def effective_settings() -> tuple[LLMSettings, str]:
     env_model = os.environ.get(_ENV_MODEL, "").strip()
     fb_base, fb_key, fb_model = resolve_opencode_credentials()
     base = saved.base_url.strip() or env_base or fb_base
-    key = saved.api_key.strip() or env_key or fb_key
+    key = saved.api_key.strip() or env_key
+    if not key and (urlparse(base).hostname or "") in _FALLBACK_KEY_ALLOWED_HOSTS:
+        key = fb_key
     model = saved.model.strip() or env_model or fb_model
     if saved.base_url.strip() or saved.api_key.strip() or saved.model.strip():
         source = "file"
