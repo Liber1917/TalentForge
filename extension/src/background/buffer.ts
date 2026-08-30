@@ -41,13 +41,13 @@ async function writeEvents(events: BehaviorEvent[]): Promise<void> {
   await storage.set({ [BUFFER_KEY]: events });
 }
 
-async function removeEvents(): Promise<void> {
+async function removeBufferKey(): Promise<void> {
   const storage = getStorageLocal();
   if (!storage) return;
   try {
     await storage.remove(BUFFER_KEY);
   } catch {
-    // Best-effort; a failed claim leaves events durable for the next attempt.
+    // Best-effort; an undeleted batch only costs a deduplicated redelivery.
   }
 }
 
@@ -85,19 +85,26 @@ export function enqueueEvent(event: BehaviorEvent): Promise<boolean> {
   });
 }
 
-/** Read the buffered events and clear storage. Returns the claimed batch. */
+/**
+ * Read a snapshot of the buffered events; storage is left intact. Events are
+ * removed only after a successful POST (by event_id, inside flushBuffer), so
+ * an MV3 service-worker kill mid-flush costs at most a redelivery — which the
+ * backend's event_id idempotency deduplicates (at-least-once delivery).
+ * The snapshot is a defensive copy: later enqueues must not leak into a
+ * batch that was already claimed (or its flush would remove them).
+ */
 export function claimBuffer(): Promise<BehaviorEvent[]> {
   return withMutation(async () => {
     const events = await readEvents();
-    await removeEvents();
-    return events;
+    return [...events];
   });
 }
 
 /**
- * POST a batch to the backend. On success nothing further is needed
- * (claimBuffer already cleared storage); on failure the batch is written back
- * so the next alarm retries it.
+ * POST a batch to the backend. On success the flushed events are removed from
+ * storage by event_id (events enqueued in the meantime are preserved; an
+ * emptied buffer removes the key entirely); on failure storage is left
+ * untouched so the next alarm retries the batch.
  */
 export function flushBuffer(events: BehaviorEvent[]): Promise<void> {
   if (events.length === 0) return Promise.resolve();
@@ -108,14 +115,20 @@ export function flushBuffer(events: BehaviorEvent[]): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ events }),
       });
-      if (response.ok) return;
+      if (!response.ok) return;
+      const flushedIds = new Set(events.map((event) => event.event_id));
+      await withMutation(async () => {
+        const current = await readEvents();
+        const remaining = current.filter((event) => !flushedIds.has(event.event_id));
+        if (remaining.length === 0) {
+          await removeBufferKey();
+        } else {
+          await writeEvents(remaining);
+        }
+      });
     } catch {
-      // Network failure — fall through to the write-back below.
+      // Network or storage failure — the batch stays durable for the next alarm.
     }
-    await withMutation(async () => {
-      const current = await readEvents();
-      await writeEvents([...current, ...events]);
-    });
   })();
 }
 

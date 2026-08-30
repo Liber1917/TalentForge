@@ -74,13 +74,30 @@ describe("buffer", () => {
     expect(stored[0].event_id).toBe("e-5");
   });
 
-  it("claims the buffered events and clears storage", async () => {
+  it("claims a snapshot without clearing storage (at-least-once)", async () => {
+    // claim 不得在投递成功前销毁事件：MV3 SW 可能在删除后、POST 完成前被杀，
+    // 整批丢失。快照语义 + 成功后按 event_id 移除，把投递升级为 at-least-once。
     const { store } = installChromeMock();
     await enqueueEvent(makeEvent("e-1"));
     await enqueueEvent(makeEvent("e-2"));
     const claimed = await claimBuffer();
     expect(claimed.map((event) => event.event_id)).toEqual(["e-1", "e-2"]);
-    expect(store[BUFFER_KEY]).toBeUndefined();
+    expect((store[BUFFER_KEY] as BehaviorEvent[]).map((e) => e.event_id)).toEqual([
+      "e-1",
+      "e-2",
+    ]);
+  });
+
+  it("removes only the flushed events on success", async () => {
+    const { store } = installChromeMock();
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true })));
+    await enqueueEvent(makeEvent("e-1"));
+    await enqueueEvent(makeEvent("e-2"));
+    const claimed = await claimBuffer();
+    await enqueueEvent(makeEvent("e-3"));
+    await flushBuffer(claimed);
+    const stored = store[BUFFER_KEY] as BehaviorEvent[];
+    expect(stored.map((event) => event.event_id)).toEqual(["e-3"]);
   });
 
   it("flushes the claimed batch to the backend on success", async () => {
@@ -101,7 +118,7 @@ describe("buffer", () => {
     expect(store[BUFFER_KEY]).toBeUndefined();
   });
 
-  it("writes the batch back to storage when the backend rejects it", async () => {
+  it("retains the batch in storage when the backend rejects it", async () => {
     const { store } = installChromeMock();
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
     await enqueueEvent(makeEvent("e-1"));
@@ -110,7 +127,7 @@ describe("buffer", () => {
     expect(stored.map((event) => event.event_id)).toEqual(["e-1"]);
   });
 
-  it("writes the batch back to storage when the network fails", async () => {
+  it("retains the batch in storage when the network fails", async () => {
     const { store } = installChromeMock();
     vi.stubGlobal("fetch", vi.fn(async () => {
       throw new Error("ECONNREFUSED");
