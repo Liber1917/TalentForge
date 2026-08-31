@@ -31,24 +31,54 @@ jobs:
           node-version: "24"
 
       - name: Build & test browser extension
-        # extension/dist 含 manifest.json（构建脚本已 stage）——Load unpacked 直接指它，
-        # zip 内容在 zip 根（manifest.json + background/ + content/）。
+        # extension/dist 含 manifest.json（构建脚本已 stage）——Load unpacked 直接指它；
+        # 两个目标的构建脚本均内嵌产物冒烟（manifest 可解析、脚本非空、形态匹配）。
         run: |
           cd extension
           npm ci
           npm test
           npm run build
-          # 火狐目标一并构建（构建脚本内嵌冒烟：manifest 可解析、脚本非空、
-          # background 形态与目标匹配——打包正确性随构建即验，产物不对外发布）
           npm run build:firefox
-          mkdir -p ../dist
-          (cd dist && zip -qr ../../dist/talentforge-extension.zip .)
 
-      - name: Upload browser extension
+      - name: Check manifest version consistency
+        # 双目标同版本出厂（参考 OpenBiliClaw ci.yml 同款门禁）：
+        # 变体派生丢/改版本，两 zip 将以不同版本流出
+        run: |
+          cd extension
+          chrome=$(node -p "require('./dist/manifest.json').version")
+          firefox=$(node -p "require('./dist-firefox/manifest.json').version")
+          if [ "$chrome" != "$firefox" ]; then
+            echo "version mismatch: chrome=$chrome firefox=$firefox"
+            exit 1
+          fi
+
+      - name: Package Chrome extension
+        # zip 内容在 zip 根（manifest.json + background/ + content/），版本化命名
+        run: |
+          cd extension
+          version=$(node -p "require('./dist/manifest.json').version")
+          mkdir -p ../dist
+          (cd dist && zip -qr "../../dist/talentforge-extension-v${version}-chrome.zip" .)
+
+      - name: Package Firefox extension
+        # dist-firefox/ 为自包含可加载目录（about:debugging 指向其 manifest.json）
+        run: |
+          cd extension
+          version=$(node -p "require('./dist-firefox/manifest.json').version")
+          (cd dist-firefox && zip -qr "../../dist/talentforge-extension-v${version}-firefox.zip" .)
+
+      - name: Upload Chrome extension
         uses: actions/upload-artifact@v4
         with:
-          name: talentforge-extension
-          path: dist/talentforge-extension.zip
+          name: talentforge-extension-chrome
+          path: dist/talentforge-extension-v*-chrome.zip
+          if-no-files-found: error
+
+      - name: Upload Firefox extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: talentforge-extension-firefox
+          path: dist/talentforge-extension-v*-firefox.zip
           if-no-files-found: error
 
   build-app:

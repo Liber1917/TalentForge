@@ -195,3 +195,40 @@ def test_ci_windows_smoke_script_avoids_readonly_auto_variables():
         f"pwsh 冒烟脚本给只读自动变量赋值：{collisions}——"
         "Windows CI 将以 read-only variable 报错退出（改用普通变量名）"
     )
+
+
+# ---------------- 扩展双目标打包（形态参考 OpenBiliClaw release 资产） ----------------
+
+
+def _step_exists(step_name: str) -> bool:
+    lines = WORKFLOW_PATH.read_text(encoding="utf-8").splitlines()
+    return any(line.strip() == f"- name: {step_name}" for line in lines)
+
+
+def test_ci_packages_chrome_and_firefox_extensions_separately():
+    """build-extension 必须分别打包双目标并独立上传工件。
+
+    Chrome（dist/，service worker）与 Firefox（dist-firefox/，事件页变体）
+    产物不可互换；单一 zip 无法覆盖 Firefox。命名带 manifest 版本
+    （同 OpenBiliClaw 的 extension-v{ver}[-firefox].zip 惯例）。
+    """
+    chrome = _step_run_script("Package Chrome extension")
+    assert "cd dist" in chrome, "Chrome 包必须以 dist/ 为 zip 根（manifest 在根）"
+    assert "manifest.json" in chrome and "version" in chrome, "命名必须注入 manifest 版本"
+    assert "-chrome.zip" in chrome
+    firefox = _step_run_script("Package Firefox extension")
+    assert "cd dist-firefox" in firefox, "Firefox 包必须以 dist-firefox/ 为 zip 根（自包含）"
+    assert "-firefox.zip" in firefox
+    assert _step_exists("Upload Chrome extension"), "缺少 Chrome 扩展独立工件上传"
+    assert _step_exists("Upload Firefox extension"), "缺少 Firefox 扩展独立工件上传"
+
+
+def test_ci_checks_extension_version_consistency():
+    """双目标必须同版本出厂（OpenBiliClaw ci.yml 同款门禁）。
+
+    buildFirefoxManifest 派生若丢/改版本，两 zip 将以不同版本流出。
+    """
+    script = _step_run_script("Check manifest version consistency")
+    assert "dist/manifest.json" in script
+    assert "dist-firefox/manifest.json" in script
+    assert "version mismatch" in script
