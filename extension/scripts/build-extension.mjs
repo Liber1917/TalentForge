@@ -5,14 +5,17 @@
 // service worker stays an ES module (manifest declares "type": "module").
 //
 // Targets (--target=chrome|firefox or TARGET env var, default chrome):
-//   chrome  → dist/          unchanged: ES-module service worker + verbatim
-//                            manifest copy (README/验收文档均指向该路径).
+//   chrome  → dist/          ES-module service worker + self-contained
+//                            manifest (dist/ prefixes stripped — the unzipped
+//                            folder loads directly; dev "Load unpacked" on
+//                            extension/ keeps using the repo-root manifest).
 //   firefox → dist-firefox/  IIFE background (Firefox MV3 has no service
 //                            worker; background.scripts loads a classic
 //                            script) + derived Gecko manifest variant.
 import { build } from "vite";
 import { fileURLToPath } from "node:url";
-import { copyFileSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { buildChromeDistManifest } from "../src/shared/dist-manifest.ts";
 import { buildFirefoxManifest } from "../src/shared/firefox.ts";
 
 const entry = (p) => fileURLToPath(new URL(`../${p}`, import.meta.url));
@@ -61,31 +64,28 @@ for (const name of ["content/bilibili", "content/zhihu", "content/boss"]) {
   });
 }
 
-// 3. Stage manifest into the loadable folder root ("Load unpacked" points at
-// dist/, about:debugging points at dist-firefox/manifest.json). Chrome copies
-// the source manifest verbatim; Firefox derives the Gecko variant (shared
-// logic in src/shared/firefox.ts keeps this in sync with unit tests).
-if (isFirefox) {
-  const base = JSON.parse(
-    readFileSync(new URL("../manifest.json", import.meta.url), "utf8"),
-  );
-  writeFileSync(
-    new URL(`../${outDir}/manifest.json`, import.meta.url),
-    `${JSON.stringify(buildFirefoxManifest(base), null, 2)}\n`,
-  );
-} else {
-  copyFileSync(
-    new URL("../manifest.json", import.meta.url),
-    new URL(`../${outDir}/manifest.json`, import.meta.url),
-  );
-}
+// 3. Stage a SELF-CONTAINED manifest into the output folder root: script
+// paths stripped of the "dist/" prefix (zip root = folder root; the unzipped
+// folder loads directly). Firefox additionally derives the Gecko variant.
+// 历史 bug：chrome 曾逐字节复制基准 manifest（路径带 dist/ 前缀），CI zip
+// 解压后 Chrome 找不到 dist/... 文件——Firefox 因同款去前缀而幸免。
+const base = JSON.parse(
+  readFileSync(new URL("../manifest.json", import.meta.url), "utf8"),
+);
+writeFileSync(
+  new URL(`../${outDir}/manifest.json`, import.meta.url),
+  `${JSON.stringify(
+    isFirefox ? buildFirefoxManifest(base) : buildChromeDistManifest(base),
+    null,
+    2,
+  )}\n`,
+);
 
-// 4. Smoke check the staged artifact: manifest must parse, every referenced
-// script must exist and be non-empty, and the background shape must match the
-// target. Fail the build loudly instead of shipping a broken folder.
-// Resolution root per target = where the browser actually loads from: the
-// repo root for chrome (paths keep their "dist/" prefix) and dist-firefox/
-// for firefox (the variant strips the prefix).
+// 4. Smoke check the staged artifact: manifest must parse, no script path may
+// carry the "dist/" prefix (self-containment — the unzipped folder must load
+// in a browser), every referenced script must exist non-empty inside outDir,
+// and the background shape must match the target. Fail the build loudly
+// instead of shipping a broken folder.
 const staged = JSON.parse(
   readFileSync(new URL(`../${outDir}/manifest.json`, import.meta.url), "utf8"),
 );
@@ -97,7 +97,10 @@ const scripts = [
   ...staged.content_scripts.flatMap((cs) => cs.js),
 ];
 for (const rel of scripts) {
-  const ref = new URL(isFirefox ? `../${outDir}/${rel}` : `../${rel}`, import.meta.url);
+  if (rel.startsWith("dist/")) {
+    throw new Error(`[build:${target}] non-self-contained script path: ${rel}`);
+  }
+  const ref = new URL(`../${outDir}/${rel}`, import.meta.url);
   const stats = statSync(ref);
   if (!stats.size) throw new Error(`[build:${target}] empty output: ${ref.pathname}`);
 }

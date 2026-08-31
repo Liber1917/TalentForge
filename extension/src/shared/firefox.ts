@@ -1,6 +1,9 @@
 // Firefox 兼容层：Gecko manifest 变体派生 + alarm 周期钳制。
-// 纯函数、零依赖 —— 构建脚本（scripts/build-extension.mjs 经 node 原生
-// type-stripping 直接 import）与 vitest 共用这一份实现。
+// 纯函数、零第三方依赖 —— 构建脚本（scripts/build-extension.mjs 经 node 原生
+// type-stripping 直接 import）与 vitest 共用这一份实现；内部导入必须带 .ts
+// 扩展名（node ESM 不做无扩展名解析）。
+import { stripDistPath } from "./dist-manifest.ts";
+
 export const FIREFOX_GECKO_ID = "talentforge@local";
 // 142.0 起桌面与 Android 均识别 data_collection_permissions（addons-linter
 // 要求新扩展声明该键；桌面 140 / Android 142 引入支持，取交集）。
@@ -53,16 +56,14 @@ export function buildFirefoxManifest(base: unknown): FirefoxManifest {
   if (typeof serviceWorker !== "string" || serviceWorker.trim() === "") {
     throw new Error("buildFirefoxManifest: base manifest lacks background.service_worker");
   }
-  const stripDistPrefix = (path: string): string =>
-    path.startsWith("dist/") ? path.slice("dist/".length) : path;
   const { background: _chromeBackground, content_scripts, ...rest } = manifest;
   void _chromeBackground;
   return {
     ...(rest as Omit<BaseManifest, "background" | "content_scripts">),
-    background: { scripts: [stripDistPrefix(serviceWorker)] },
+    background: { scripts: [stripDistPath(serviceWorker)] },
     content_scripts: (content_scripts ?? []).map((cs) => ({
       ...cs,
-      js: cs.js.map(stripDistPrefix),
+      js: cs.js.map(stripDistPath),
     })),
     browser_specific_settings: {
       gecko: {

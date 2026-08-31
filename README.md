@@ -26,7 +26,7 @@ npm run build            # Chrome/Edge
 npm run build:firefox    # Firefox（详见 extension/FIREFOX.md）
 ```
 
-- **Chrome/Edge**：`chrome://extensions` → 开发者模式 → 加载已解压 → 选 `extension/` 目录
+- **Chrome/Edge**：`chrome://extensions` → 开发者模式 → 加载已解压 → 选 `extension/` 目录（或解压 CI 工件 `talentforge-extension-v*-chrome.zip` 后选解压目录——zip 根即自包含扩展）
 - **Firefox**：`about:debugging` → 此 Firefox → 临时载入附加组件 → 选 `extension/dist-firefox/manifest.json`
 
 之后正常浏览 Boss 直聘搜索页 / B站 / 知乎：岗位卡片自动入库（`job_url` 去重），点击/搜索/滚动事件入库（`event_id` 幂等，30-60s 批量上报）。合规红线：只读采集、不绕过验证码、命中风控人工处理。
