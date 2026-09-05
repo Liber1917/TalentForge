@@ -18,6 +18,7 @@ from talentforge.report.generate import generate_report
 from talentforge.sources.job_competency import (
     CompetencyModelCache,
     RuleCompetencyClusterer,
+    _skills_of,
     _title_key,
 )
 
@@ -65,6 +66,45 @@ def test_find_cluster_returns_role_key_for_members() -> None:
     assert clusterer.find_cluster(jobs[0]) == clusterer.find_cluster(jobs[1])
 
 
+def test_skills_of_ignores_english_boilerplate() -> None:
+    job = _job(
+        "j1",
+        "海外增长运营",
+        "We are looking for a passionate engineer. You will join our team "
+        "and build amazing products with the company. 3.5年经验，16薪。",
+    )
+    assert _skills_of(job) == set()
+
+
+def test_skills_of_matches_real_tech_tokens() -> None:
+    job = _job(
+        "j1",
+        "后端工程师",
+        "熟悉 JavaScript、gRPC、C++、Node.js、Vue3、K8s、PostgreSQL、Redis、Docker 与 mysql",
+    )
+    assert {
+        "javascript", "grpc", "c++", "node.js", "vue3",
+        "k8s", "postgresql", "redis", "docker", "mysql",
+    } <= _skills_of(job)
+
+
+def test_english_boilerplate_does_not_merge_unrelated_jobs() -> None:
+    jobs = [
+        _job(
+            "j1", "海外增长运营",
+            "We are looking for a passionate engineer to join our team "
+            "and build amazing products with the company.",
+        ),
+        _job(
+            "j2", "本地生活BD",
+            "We are looking for a passionate marketer to join our team "
+            "and build amazing products with the company.",
+        ),
+    ]
+    clusters = RuleCompetencyClusterer().cluster(jobs)
+    assert len(clusters) == 2
+
+
 # ---------------- 模型缓存 ----------------
 
 
@@ -78,6 +118,32 @@ def test_cache_roundtrip_and_corrupt_tolerance(tmp_path: Path) -> None:
 
     (tmp_path / "cm.json").write_text("{not-json", encoding="utf-8")
     assert CompetencyModelCache(tmp_path / "cm.json").load() == {}
+
+
+def test_cache_invalidates_on_clusterer_version_mismatch(tmp_path: Path) -> None:
+    legacy = CompetencyModel(role="后端", role_key="backend", dimensions=[{"name": "认知复杂度"}])
+    p = tmp_path / "cm.json"
+
+    # rule-v1 时代写的缓存 → 当前 rule-v2 聚类语义下整体作废
+    p.write_text(
+        json.dumps({"_version": "rule-v1", "backend": legacy.model_dump()}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    assert CompetencyModelCache(p, version="rule-v2").load() == {}
+
+    # 更旧的扁平格式（无 _version 字段）→ 同样作废
+    p.write_text(
+        json.dumps({"backend": legacy.model_dump()}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    assert CompetencyModelCache(p).load() == {}
+
+
+def test_cache_persists_version_header(tmp_path: Path) -> None:
+    cache = CompetencyModelCache(tmp_path / "cm.json", version="rule-v2")
+    cache.put(CompetencyModel(role="后端", role_key="backend", dimensions=[{"name": "韧性"}]))
+    data = json.loads((tmp_path / "cm.json").read_text(encoding="utf-8"))
+    assert data["_version"] == "rule-v2"
 
 
 # ---------------- 逐维对齐解析 ----------------

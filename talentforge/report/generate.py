@@ -86,7 +86,7 @@ async def generate_report(
     # M9 岗位胜任力：先聚类分簇 → 每簇复用/新建模型 → 匹配时注入已知维度
     clusterer = RuleCompetencyClusterer()
     clusters = clusterer.cluster(jobs)
-    cache = CompetencyModelCache()
+    cache = CompetencyModelCache(version=clusterer.version)
     cached = cache.load()
     cluster_dimensions: dict[str, list[str]] = {}
     for cluster in clusters:
@@ -110,6 +110,7 @@ async def generate_report(
                 role=job.title, role_key=role_key, level="",
                 dimensions=[{"name": a.dimension} for a in match.competency],
                 source=f"job:{job.id}",
+                clusterer_version=clusterer.version,
             )
         # D15 核心：决策组装（象限+结构调制+M9 联动调制）收编 decision/build，
         # 报告 item 从 Decision 序列化（落库/导出共用同一事实源）

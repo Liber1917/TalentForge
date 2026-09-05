@@ -36,8 +36,23 @@ _TITLE_STOPWORDS = (
     "初级", "中级", "高级", "资深",
 )
 _TITLE_SYMBOL_RE = re.compile(r"[()（）\[\]【】·\-—_/\\\s+]+")
-# 技能词提取：JD 描述里的大写/驼峰技术词 + 常见小写语言（用于重叠率）
-_SKILL_RE = re.compile(r"\b(?:[A-Z][A-Za-z0-9+#.]{1,20}|python|golang|java|rust|go|c\+\+|rust|sql|kubernetes|docker|k8s)\b", re.IGNORECASE)
+# 技能词提取：白名单（词汇本身无歧义，允许大小写变体）+ 科技词形 token——
+# 全大写缩写 / 驼峰 / 含数字 / 含技术符号（C++、Node.js、K8s、gRPC）。
+# 词形分支大小写敏感：曾用全局 IGNORECASE 使 [A-Z] 锚失效，任意英文单词
+# 都算技能词，英文样板话术污染重叠率 → 不相关岗位并簇（rule-v2 修复）。
+# 尾部用 (?![A-Za-z0-9]) 而非 \b：C++/Node.js 这类符号结尾 token 后跟
+# 标点时 \b 不成立，会整体失配。
+_SKILL_RE = re.compile(
+    r"\b(?:"
+    r"(?i:python|golang|java|rust|sql|kubernetes|docker|k8s|react|vue|redis|kafka|nginx|mysql|git|linux|typescript|javascript)"
+    r"|[A-Za-z][A-Za-z0-9]*[+#][+.#]*"
+    r"|[A-Za-z]+(?:\.[A-Za-z0-9]+)+"
+    r"|[A-Za-z]+\d[A-Za-z0-9]*"
+    r"|[A-Z]{2,}[A-Za-z0-9]*"
+    r"|[A-Z][a-z0-9]*[A-Z][A-Za-z0-9]*"
+    r"|[a-z]+[A-Z][A-Za-z0-9]*"
+    r")(?![A-Za-z0-9])"
+)
 _OVERLAP_THRESHOLD = 0.4
 
 
@@ -82,7 +97,8 @@ class CompetencyClusterer(Protocol):
 class RuleCompetencyClusterer:
     """规则实现：title 关键词相等 或 技能词重叠 ≥ 阈值 → 同簇。"""
 
-    version = "rule-v1"
+    # v2：技能词提取改大小写敏感的词形匹配（英文样板话术不再计入重叠率）
+    version = "rule-v2"
 
     def __init__(self, overlap_threshold: float = _OVERLAP_THRESHOLD) -> None:
         self._threshold = overlap_threshold
@@ -129,10 +145,17 @@ class RuleCompetencyClusterer:
 
 
 class CompetencyModelCache:
-    """胜任力模型缓存：按 role_key 存取（data/competency_models.json）。"""
+    """胜任力模型缓存：按 role_key 存取（data/competency_models.json）。
 
-    def __init__(self, path: Path | None = None) -> None:
+    文件头 _version 记写入时的 clusterer 版本；load 时版本不一致（含更早的
+    无版本扁平格式）整体作废——换聚类算法后旧缓存自动失效重建。
+    """
+
+    VERSION_KEY = "_version"
+
+    def __init__(self, path: Path | None = None, version: str | None = None) -> None:
         self._path = path or cache_path()
+        self._version = version or RuleCompetencyClusterer.version
         self._models: dict[str, CompetencyModel] = {}
 
     def load(self) -> dict[str, CompetencyModel]:
@@ -140,8 +163,12 @@ class CompetencyModelCache:
             data = json.loads(self._path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return {}
+        if not isinstance(data, dict) or data.get(self.VERSION_KEY) != self._version:
+            return {}
         models: dict[str, CompetencyModel] = {}
         for key, raw in data.items():
+            if key == self.VERSION_KEY or not isinstance(raw, dict):
+                continue
             try:
                 models[key] = CompetencyModel.model_validate(raw)
             except Exception:  # noqa: BLE001 — 单条损坏跳过，不拖垮整体
@@ -157,13 +184,11 @@ class CompetencyModelCache:
         self._persist()
 
     def _persist(self) -> None:
-        path = self._path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(
-                {k: v.model_dump() for k, v in self._models.items()},
-                ensure_ascii=False,
-                indent=2,
-            ),
+        payload: dict[str, object] = {self.VERSION_KEY: self._version}
+        for k, v in self._models.items():
+            payload[k] = v.model_dump()
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
