@@ -9,20 +9,14 @@ import {
   isSearchPage,
   mapWapiJobList,
 } from "../shared/platforms/boss";
-import { backendEndpoint } from "../shared/backend-endpoint";
+import { reportJobs } from "../shared/jobs_report";
+import { createAssistToggle, createScrollPulse } from "../shared/scroll-pulse";
 
 const WAPI_PAGE_URL = "/wapi/zpgeek/search/joblist.json";
 const sentUrls = new Set<string>();
 
 function postJobs(jobs: unknown[]): void {
-  if (jobs.length === 0) return;
-  fetch(`${backendEndpoint()}/jobs/batch`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source: "boss", jobs }),
-  }).catch(() => {
-    // Backend down — drop the batch; next scroll/URL change re-harvests.
-  });
+  reportJobs("boss", jobs as Parameters<typeof reportJobs>[1]);
 }
 
 /** wapi channel: same-origin fetch of the job-list JSON (cookies+stoken auto). */
@@ -72,7 +66,29 @@ window.addEventListener("popstate", onUrlChanged);
 if (isSearchPage(window.location.href)) {
   void harvestViaWapi();
   harvestDom();
+  setupAssist();
 }
 window.addEventListener("scroll", () => harvestDom(), { passive: true });
+
+function setupAssist(): void {
+  const pulse = createScrollPulse({
+    scrollBy: (step) => {
+      window.scrollBy({ top: step, behavior: "smooth" });
+    },
+    measure: () => ({
+      scrollY: window.scrollY,
+      viewportH: window.innerHeight,
+      docH: document.documentElement.scrollHeight,
+    }),
+    delay: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  });
+  createAssistToggle(document, () => {
+    if (pulse.isRunning()) {
+      pulse.stop();
+    } else {
+      void pulse.runToBottom();
+    }
+  });
+}
 
 (globalThis as Record<string, unknown>).__talentforge_boss = true;

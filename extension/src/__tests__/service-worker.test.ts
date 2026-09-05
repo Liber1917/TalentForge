@@ -135,6 +135,33 @@ describe("service-worker", () => {
     expect(body.events).toHaveLength(BUFFER_CAP);
   });
 
+  it("relays JOBS_BATCH messages to the backend /api/jobs/batch", async () => {
+    const { listeners } = installChromeMock();
+    const fetchMock = vi.fn(async (_input: unknown, _init?: RequestInit) => ({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    initServiceWorker();
+    const sendResponse = vi.fn();
+    const card = { title: "T", company: "C", location: "L", salary: "1-2/天", url: "https://u", tags: [], description: "" };
+    listeners[0]({ action: "JOBS_BATCH", source: "shixiseng", jobs: [card] }, null, sendResponse);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain("/api/jobs/batch");
+    const body = JSON.parse(String(init!.body));
+    expect(body.source).toBe("shixiseng");
+    expect(body.jobs).toHaveLength(1);
+    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ ok: true }));
+  });
+
+  it("ignores malformed JOBS_BATCH payloads", async () => {
+    const { listeners } = installChromeMock();
+    const fetchMock = vi.fn(async () => ({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    initServiceWorker();
+    listeners[0]({ action: "JOBS_BATCH", source: "x", jobs: "not-a-list" }, null, () => {});
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("flushes the buffer when the flush alarm fires", async () => {
     const { store, listeners, alarmListeners } = installChromeMock();
     const fetchMock = vi.fn(async (_input: unknown, _init?: RequestInit) => ({ ok: true }));

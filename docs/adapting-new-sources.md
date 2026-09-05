@@ -12,6 +12,8 @@
 | 有公开 API、无需登录或可接受匿名限流 | **公开 API**（kind: public） | GitHub / Gitee / arXiv |
 | 无公开 API 且反爬弱 | 公开 API 路线的特例：HTTP 抓取 + 解析（无需浏览器） | — |
 
+**M11 补充（D30 分级采集）**：岗位类平台加入扩展前先过 `sources/collection_policy.py` 分档（auto/assist/manual/blocked，参考 `docs/research/m11-platform-recon.md` 侦察方法与 `docs/spec-m11-graded-collection.md`）；auto 档经任务子系统无人访问，适配器参考 `extension/src/shared/platforms/shixiseng.ts`（SSR 直采）与 `zhaopin.ts`（MAIN-world hook 截获 XHR）两种范式，并在 `manifest.json` 注册 content script（必要时加 `world: "MAIN"` 入口）与 `scripts/build-extension.mjs` 构建清单。
+
 **判定铁律：**
 - 服务器绑定 `127.0.0.1`，**绝不**为采集起 Chromium/Playwright（D25：服务器 IP 会被风控，扫码登录会被投毒）
 - 需要用户登录态的站 → 必须走扩展（用户浏览器里 cookie 天然有效）

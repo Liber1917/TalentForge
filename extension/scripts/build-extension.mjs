@@ -50,7 +50,14 @@ await build({
 
 // 2. Content scripts: one IIFE build per entry — no imports, no shared chunks.
 // Identical for both targets (content_scripts are classic scripts everywhere).
-for (const name of ["content/bilibili", "content/zhihu", "content/boss"]) {
+for (const name of [
+  "content/bilibili",
+  "content/zhihu",
+  "content/boss",
+  "content/shixiseng",
+  "content/zhaopin",
+  "content/zhaopin-main",
+]) {
   await build({
     build: {
       outDir,

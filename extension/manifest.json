@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TalentForge",
   "version": "0.1.0",
-  "permissions": ["storage", "alarms"],
+  "permissions": ["storage", "alarms", "tabs"],
   "background": {
     "service_worker": "dist/background/service-worker.js",
     "type": "module"
@@ -11,7 +11,9 @@
     "http://127.0.0.1/*",
     "*://*.bilibili.com/*",
     "*://*.zhihu.com/*",
-    "*://*.zhipin.com/*"
+    "*://*.zhipin.com/*",
+    "*://*.shixiseng.com/*",
+    "*://*.zhaopin.com/*"
   ],
   "content_scripts": [
     {
@@ -27,6 +29,22 @@
     {
       "matches": ["*://*.zhipin.com/*"],
       "js": ["dist/content/boss.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.shixiseng.com/*"],
+      "js": ["dist/content/shixiseng.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.zhaopin.com/*"],
+      "js": ["dist/content/zhaopin-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.zhaopin.com/*"],
+      "js": ["dist/content/zhaopin.js"],
       "run_at": "document_idle"
     }
   ]

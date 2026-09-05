@@ -29,6 +29,7 @@ from talentforge.api.routes_report import router as report_router
 from talentforge.api.routes_resume import router as resume_router
 from talentforge.api.routes_sources import router as sources_router
 from talentforge.api.routes_suggest import router as suggest_router
+from talentforge.api.routes_tasks import router as tasks_router
 from talentforge.api.routes_work import router as work_router
 from talentforge.llm.client import EnvLLMClient, LLMClient
 from talentforge.storage.db import DEFAULT_DB_PATH, init_db
@@ -94,9 +95,17 @@ def create_app(
             return JSONResponse(status_code=403, content={"detail": "forbidden host"})
         origin = request.headers.get("origin")
         if origin:
-            host = urlparse(origin).hostname or ""
+            parsed_origin = urlparse(origin)
+            host = parsed_origin.hostname or ""
             if host not in ("127.0.0.1", "localhost"):
-                if not (
+                # M11：扩展 service-worker 的 fetch 带 chrome-extension:// Origin
+                #（Chromium 151 实测）——本机扩展与本机 curl 同信任域，仅对
+                # 采集摄入端点放行（events/jobs/tasks）；其余端点仍拒扩展来源。
+                extension_ingest = parsed_origin.scheme == "chrome-extension" and (
+                    request.url.path in ("/api/events", "/api/jobs/batch")
+                    or request.url.path.startswith("/api/tasks")
+                )
+                if not extension_ingest and not (
                     request.url.path == "/api/events"
                     and request.method == "POST"
                     and (
@@ -141,6 +150,7 @@ def create_app(
     app.include_router(llm_router)
     app.include_router(onboarding_router)
     app.include_router(suggest_router)
+    app.include_router(tasks_router)
     app.include_router(work_router)
     app.include_router(explore_router)
     app.include_router(resume_router)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from talentforge.domain.job import Job
@@ -52,6 +52,21 @@ _SCHEMA: tuple[str, ...] = (
         competency_json TEXT,
         profile_snapshot_json TEXT,
         decided_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS collection_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        platform TEXT NOT NULL,
+        url TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        dwell_ms INTEGER NOT NULL DEFAULT 15000,
+        runner TEXT,
+        result_json TEXT,
+        error TEXT,
+        created_at TEXT NOT NULL,
+        claimed_at TEXT,
+        finished_at TEXT
     )
     """,
 )
@@ -282,3 +297,128 @@ def _load_json_list(value: str | None) -> list:
     except json.JSONDecodeError:
         return []
     return data if isinstance(data, list) else []
+
+
+# ---------------- M11 采集任务（D30 auto 通道） ----------------
+
+_TASK_ACTIVE_STATUSES = ("pending", "running")
+_TASK_TERMINAL_STATUSES = ("done", "failed", "aborted")
+_MAX_TASK_DWELL_MS = 30_000
+
+
+def enqueue_task(
+    conn: sqlite3.Connection, platform: str, url: str, dwell_ms: int = 15_000
+) -> int | None:
+    """auto 采集任务入队：同平台同 URL 未完成（pending/running）→ 去重拒绝 None。
+
+    dwell_ms 服务端封顶 30s（M11 护栏：单任务停留预算）。
+    """
+    dup = conn.execute(
+        "SELECT id FROM collection_tasks WHERE platform=? AND url=? AND status IN (?, ?)",
+        (platform, url, *_TASK_ACTIVE_STATUSES),
+    ).fetchone()
+    if dup is not None:
+        return None
+    cursor = conn.execute(
+        """
+        INSERT INTO collection_tasks (platform, url, status, dwell_ms, created_at)
+        VALUES (?, ?, 'pending', ?, ?)
+        """,
+        (
+            platform,
+            url,
+            min(int(dwell_ms), _MAX_TASK_DWELL_MS),
+            datetime.now(timezone.utc).isoformat(),
+        ),
+    )
+    conn.commit()
+    return int(cursor.lastrowid)
+
+
+def claim_next_task(conn: sqlite3.Connection, runner: str) -> dict | None:
+    """原子领取最早的 pending 任务（pending→running）；无任务返回 None。"""
+    with conn:
+        row = conn.execute(
+            "SELECT * FROM collection_tasks WHERE status='pending' ORDER BY id LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return None
+        cursor = conn.execute(
+            "UPDATE collection_tasks SET status='running', runner=?, claimed_at=? "
+            "WHERE id=? AND status='pending'",
+            (runner, datetime.now(timezone.utc).isoformat(), row["id"]),
+        )
+        if cursor.rowcount != 1:
+            return None
+    fresh = conn.execute(
+        "SELECT * FROM collection_tasks WHERE id=?", (row["id"],)
+    ).fetchone()
+    return dict(fresh)
+
+
+def report_task(
+    conn: sqlite3.Connection,
+    task_id: int,
+    status: str,
+    inserted: int | None = None,
+    risk_signal: str | None = None,
+    error: str | None = None,
+) -> bool:
+    """runner 回报终态（done/failed/aborted）；仅 running 任务可回报，成功返回 True。
+
+    risk_signal 非空（风控信号）随 result 落库——platform_in_cooldown 据此判定冷却。
+    """
+    if status not in _TASK_TERMINAL_STATUSES:
+        raise ValueError(f"非法任务终态: {status}")
+    result: dict[str, object] = {}
+    if inserted is not None:
+        result["inserted"] = inserted
+    if risk_signal:
+        result["risk_signal"] = risk_signal
+    cursor = conn.execute(
+        "UPDATE collection_tasks SET status=?, result_json=?, error=?, finished_at=? "
+        "WHERE id=? AND status='running'",
+        (
+            status,
+            json.dumps(result, ensure_ascii=False) if result else None,
+            error,
+            datetime.now(timezone.utc).isoformat(),
+            task_id,
+        ),
+    )
+    conn.commit()
+    return cursor.rowcount == 1
+
+
+def count_tasks_today(conn: sqlite3.Connection, platform: str) -> int:
+    """当日该平台入队任务数（配额口径，不分状态）。"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM collection_tasks WHERE platform=? AND created_at LIKE ?",
+        (platform, f"{today}%"),
+    ).fetchone()
+    return int(row["n"])
+
+
+def platform_in_cooldown(
+    conn: sqlite3.Connection, platform: str, minutes: int = 30
+) -> bool:
+    """平台冷却判定：minutes 窗口内有带 risk_signal 的已完结任务 → True。"""
+    threshold = (
+        datetime.now(timezone.utc) - timedelta(minutes=minutes)
+    ).isoformat()
+    row = conn.execute(
+        "SELECT 1 FROM collection_tasks "
+        "WHERE platform=? AND finished_at IS NOT NULL AND finished_at >= ? "
+        "AND result_json LIKE '%\"risk_signal\"%' LIMIT 1",
+        (platform, threshold),
+    ).fetchone()
+    return row is not None
+
+
+def list_tasks(conn: sqlite3.Connection, limit: int = 50) -> list[dict]:
+    """按入队时间倒序读回采集任务（设置页/验收可见性）。"""
+    rows = conn.execute(
+        "SELECT * FROM collection_tasks ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+    return [dict(row) for row in rows]

@@ -15,15 +15,25 @@ pip install -e .
 
 或直接用分发包（CI 产物）：Windows `TalentForgeSetup.exe`（Inno Setup 安装器）/ macOS `TalentForge-macOS.dmg` / Linux `talentforge-linux.tar.gz`。exe 双击即起服务并自动打开浏览器，零命令行。
 
-## 数据从哪来：浏览器扩展采集
+## 数据从哪来：浏览器扩展采集（D25 唯一通道 + D30 分级采集）
 
-扩展是 Boss 岗位与 B站/知乎浏览行为的**唯一采集通道**（D25）：
+扩展是 Boss 岗位与 B站/知乎浏览行为的**唯一采集通道**（D25）；M11 起按平台风控分级（D30）：
+
+| 平台 | 模式 | 说明 |
+|---|---|---|
+| Boss zhipin | assist | 搜索页"辅助浏览"开关：拟人滚动脉冲加载更多，人在场启停 |
+| 智联 zhaopin | auto | 任务派发无人访问；MAIN-world hook 截获 fe-api 岗位 JSON |
+| 实习僧 shixiseng | auto | 任务派发无人访问；SSR 卡片直采（数字字段有字体混淆局限） |
+| B站/知乎 | manual（红线） | 行为语义平台，自动访问=伪造显示性行为（D6/O1） |
+| 拉勾/领英 | blocked（禁入） | 平台破产 / 合规硬伤（docs/research/m11-platform-recon.md） |
+
+任务端点：`POST /api/tasks/visit`（仅 auto 平台，冷却/配额护栏）→ `GET /api/tasks/next`（扩展 alarm 轮询领取）→ `POST /api/tasks/{id}/report`；策略覆盖 `data/collection_policy.json`（`paused:true` 全局停）。
 
 ```bash
 cd extension
 npm ci
 npm run build            # Chrome/Edge
-npm run build:firefox    # Firefox（详见 extension/FIREFOX.md）
+npm run build:firefox    # Firefox（详见 extension/FIREFOX.md；zhaopin MAIN-world 需 FF 128+）
 ```
 
 - **Chrome/Edge**：`chrome://extensions` → 开发者模式 → 加载已解压 → 选 `extension/` 目录（或解压 CI 工件 `talentforge-extension-v*-chrome.zip` 后选解压目录——zip 根即自包含扩展）

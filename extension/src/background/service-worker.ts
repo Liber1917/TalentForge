@@ -2,7 +2,9 @@
 // On Firefox the same bundle runs as an event page (background.scripts) — the
 // chrome.* namespace is an alias of browser.* there, so promise usage works.
 import { claimBuffer, enqueueEvent, flushBuffer } from "./buffer";
+import { backendEndpoint } from "../shared/backend-endpoint";
 import { clampAlarmPeriodForFirefox } from "../shared/firefox";
+import { initTaskRunner } from "./task_runner";
 import type { BehaviorEvent } from "../shared/types";
 
 export const FLUSH_ALARM_NAME = "talentforge-flush";
@@ -27,6 +29,19 @@ async function handleBehaviorEvent(event: BehaviorEvent): Promise<void> {
   }
 }
 
+async function handleJobsBatch(source: string, jobs: unknown[]): Promise<void> {
+  if (!Array.isArray(jobs) || jobs.length === 0) return;
+  try {
+    await fetch(`${backendEndpoint()}/jobs/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source, jobs }),
+    });
+  } catch {
+    // Backend down — drop; the next harvest trigger re-sends (URL dedupe server-side).
+  }
+}
+
 /**
  * Wire up message routing and the periodic flush alarm. Guarded against a
  * missing chrome API so importing the module (e.g. in tests) is a no-op.
@@ -37,6 +52,24 @@ export function initServiceWorker(): void {
 
   chromeApi.runtime?.onMessage?.addListener?.(
     (message, _sender, sendResponse) => {
+      if (message?.action === "JOBS_BATCH") {
+        void handleJobsBatch(String(message.source ?? ""), message.jobs)
+          .then(() => {
+            try {
+              sendResponse?.({ ok: true });
+            } catch {
+              // The sender may have gone away after persistence.
+            }
+          })
+          .catch(() => {
+            try {
+              sendResponse?.({ ok: false });
+            } catch {
+              // Nothing else to report.
+            }
+          });
+        return true;
+      }
       if (message?.action !== "BEHAVIOR_EVENT") return;
       void handleBehaviorEvent(message.data as BehaviorEvent)
         .then(() => {
@@ -83,3 +116,4 @@ export function initServiceWorker(): void {
 }
 
 initServiceWorker();
+initTaskRunner();
