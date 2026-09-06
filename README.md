@@ -131,11 +131,15 @@ GitHub 未认证限流 60 请求/时；`TALENTFORGE_GITHUB_TOKEN` 可升至 5000
 
 `#/explore`：技术资产盘点快照 → 三口径方向卡 → 识别交叉方向（低置信诚实标注）→ 跳对话深谈。`/api/explore`（snapshot/directions/asset-brief）。
 
+## 新手引导（M12 演示沙箱）
+
+顶栏"新手引导"按钮随时打开/重放六步导览（对话 → 决策卡 → 工作台 → 画像 → 采集 → 切真），全程用演示数据走一遍核心概念——**不会写入你的任何真实数据**（演示态无后端写路由、退出后 `tf_real` 原样还原，D31 沙箱红线）。首启用户还会在对话空态看到"先看 2 分钟引导"建议卡。
+
 ## 测试
 
 ```bash
 .venv/bin/pytest                                   # Python 全量（后端 + 契约 + 打包回归）
 cd extension && npm test                           # 扩展 vitest
-node --test web/tests/chat.test.mjs web/tests/jobs.test.mjs web/tests/profile.test.mjs \
-  web/tests/sources.test.mjs web/tests/explore.test.mjs web/tests/llm.test.mjs   # Web 渲染断言
+node --test web/tests/*.test.mjs   # Web 渲染断言 + 新手引导冒烟（环境缺 playwright-core 自动跳过；
+                                   # 本地真跑：TF_PLAYWRIGHT_CORE=<playwright-core 包路径> node --test ...）
 ```

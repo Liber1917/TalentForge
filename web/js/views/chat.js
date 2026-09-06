@@ -319,6 +319,12 @@ const TalentForgeChat = (() => {
   /** 首启引导卡（M10 分发）：四维就绪状态 → 三步引导；全部就绪返回空串。 */
   function renderOnboardingCard(status) {
     const s = status || {};
+    let tourSeen = true;
+    try {
+      tourSeen = window.localStorage.getItem("tf_tour_done") === "1";
+    } catch (err) {
+      tourSeen = true;
+    }
     const steps = [
       {
         done: Boolean(s.profile),
@@ -354,6 +360,7 @@ const TalentForgeChat = (() => {
         <div class="onboarding-card" role="region" aria-label="开始使用 TalentForge">
           <h3 class="onboarding-card__title">开始使用</h3>
           <p class="onboarding-card__hint">完成下面几步，顾问就能帮你决策——已完成的打勾。</p>
+          ${tourSeen ? "" : '<button type="button" class="btn btn--ghost btn--sm tf-tour-start-btn">先看 2 分钟新手引导（演示数据）</button>'}
           <div class="onboarding-card__steps">${rows}</div>
         </div>`;
   }

@@ -15,8 +15,24 @@ const TalentForgeApi = (() => {
   const _wantReal =
     new URLSearchParams(window.location.search).get("real") === "1" ||
     window.localStorage.getItem("tf_real") === "1";
-  const USE_FIXTURES = !_wantReal;
-  const BASE = USE_FIXTURES ? "/api/fixtures" : "/api";
+  /* M12（D31 演示沙箱）：新手引导可运行时强制 fixture 模式（内存 flag，
+     不落 storage）；null = 无覆盖，回落 URL/localStorage 的默认判定。 */
+  let _fixtureOverride = null;
+
+  function _wantRealNow() {
+    if (_fixtureOverride !== null) return !_fixtureOverride;
+    return _wantReal;
+  }
+
+  function _baseNow() {
+    return _wantRealNow() ? "/api" : "/api/fixtures";
+  }
+
+  /** 沙箱开关：true=强制假数据，false=强制真后端，null=还原默认。 */
+  function setFixtureOverride(value) {
+    _fixtureOverride = value === null ? null : Boolean(value);
+  }
+
   const TIMEOUT_MS = 10000;
 
   /**
@@ -30,7 +46,7 @@ const TalentForgeApi = (() => {
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      const res = await fetch(`${BASE}${path}`, {
+      const res = await fetch(`${_baseNow()}${path}`, {
         headers: { Accept: "application/json" },
         ...options,
         signal: controller.signal,
@@ -91,7 +107,22 @@ const TalentForgeApi = (() => {
     return request("/profile");
   }
 
-  return { USE_FIXTURES, BASE, getChat, getJobs, getProfile, postTurn, confirmClaim, rejectClaim, request };
+  return {
+    get USE_FIXTURES() {
+      return !_wantRealNow();
+    },
+    get BASE() {
+      return _baseNow();
+    },
+    setFixtureOverride,
+    getChat,
+    getJobs,
+    getProfile,
+    postTurn,
+    confirmClaim,
+    rejectClaim,
+    request,
+  };
 })();
 
 if (typeof window !== "undefined") {
