@@ -46,8 +46,8 @@ def get_fixture_chat() -> list[ChatTurn]:
     用户反问（996/竞业 + 自述系统设计积累）→ 助手回风险提示卡 + 画像主张卡 + 反思提问卡。
     """
     risk_why_996 = (
-        "996 意味着劳动时间被系统性延长——超出法定工时的部分通常不支付对价，"
-        "长期会压缩你的再生产时间（睡眠/学习/社交）。这不是道德判断，"
+        "996 意味着劳动时间被系统性延长——超时部分通常拿不到加班费，"
+        "长期会压缩你恢复和成长的时间（睡眠/学习/社交）。这不是道德判断，"
         "是你需要知情权衡的事实。"
     )
     return [
@@ -88,7 +88,7 @@ def get_fixture_chat() -> list[ChatTurn]:
                         salary="15-25K",
                     ),
                     verdict="skip",
-                    reason="薪资低于你的保留工资，且含竞业限制条款，与硬边界直接冲突。",
+                    reason="薪资低于你的最低可接受薪资，且含竞业限制条款，与硬边界直接冲突。",
                     risk_hits=[RiskHit(key="竞业限制", label="竞业限制条款")],
                     evidence=[
                         EvidenceRef(
@@ -154,7 +154,7 @@ def get_fixture_jobs() -> list[dict]:
             "salary": "30-45K·14薪",
             "url": "https://www.zhipin.com/job_detail/data_1006.html",
             "verdict": "apply",
-            "reason": "成长契合高（流计算方向补强），薪资覆盖保留工资，双休弹性工时。",
+            "reason": "成长契合高（流计算方向补强），薪资覆盖你的最低可接受薪资，双休弹性工时。",
             "risk_hits": [],
             "gap": ["Flink 流处理"],
             "remediation": ["搭一个 Flink 词频 demo 上简历", "面试前补两道流计算设计题"],
@@ -202,7 +202,7 @@ def get_fixture_jobs() -> list[dict]:
             "salary": "15-25K",
             "url": "https://www.zhipin.com/job_detail/java_1002.html",
             "verdict": "skip",
-            "reason": "薪资低于保留工资，且含竞业限制条款，与硬边界直接冲突。",
+            "reason": "薪资低于你的最低可接受薪资，且含竞业限制条款，与硬边界直接冲突。",
             "risk_hits": [{"key": "竞业限制", "label": "竞业限制条款"}],
             "gap": ["Java 交易系统经验"],
             "remediation": ["竞业为硬边界，暂缓投入"],
@@ -292,7 +292,7 @@ def get_fixture_profile(profile_path: str | Path | None = None) -> dict:
     """从 docs/demo/profile.json 读入并补全画像（前端画像面板的离线样例）。
 
     补全范围：三轨齐备（narrative / utility_preferences / structural_position 八格）、
-    narrative_claims 含 trial（待定池 3 条）+ active（1 条，模拟用户已确认）。
+    narrative_claims 含 trial（待确认区 3 条）+ active（1 条，模拟用户已确认）。
     """
     path = Path(profile_path) if profile_path is not None else DEFAULT_PROFILE_PATH
     data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))

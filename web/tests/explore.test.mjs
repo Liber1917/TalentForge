@@ -42,7 +42,7 @@ test("renderDirectionCard 三态徽章类名与中文标签各自落位", () => 
 
   const field = Explore.renderDirectionCard(FIELD_CARD);
   assert.match(field, /scope-badge scope-badge--field/);
-  assert.match(field, />场域</);
+  assert.match(field, />行业</);
 });
 
 /* ---------- renderDirectionCard 结构 ---------- */
@@ -166,7 +166,7 @@ test("renderAssetBrief 四组紧凑清单：技能簇/强信号/行为兴趣/硬
   assert.match(html, /技能簇（作品语言分布）/);
   assert.match(html, /强信号（强作品 \+ 已确认主张）/);
   assert.match(html, /行为兴趣（待验证主张）/);
-  assert.match(html, /硬边界（deal breakers \+ 剥削敏感带）/);
+  assert.match(html, /硬边界与工作底线/);
   assert.match(html, /Python × 6 仓库/);
   assert.match(html, /C\+\+ × 2 仓库/);
   assert.match(html, /\[github\] edge-infer（C\+\+，142 commits）/);

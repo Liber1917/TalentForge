@@ -28,7 +28,7 @@ EXPLORE_SNAPSHOT_SYSTEM_PROMPT = (
     "八格摘要/硬边界）与国内岗位市场统计，你的任务是从这些既有资产出发向可能性"
     "空间搜索，输出 3-5 张方向卡。只输出一个 JSON 对象，不要输出其他文字。格式："
     '{"directions": [方向卡, ...]}。每张方向卡的字段：scope（track=赛道：这堆资产'
-    "能干什么｜lifestyle=活法：同赛道选哪种组织形态｜field=场域：换哪张桌子打）、"
+    "能干什么｜lifestyle=活法：同赛道选哪种组织形态｜field=行业：换哪张桌子打）、"
     "title（方向名，如「边缘 AI 部署」）、why_you（证据链数组，每条 "
     "{kind, ref, text}，kind 取 work|profile|behavior|dialogue）、"
     "market_evidence（市场验证）、data_backed（布尔）、distance（差多远，说人话）、"
@@ -78,7 +78,7 @@ def card_id_for(title: str) -> str:
 
 
 def _salary_text(wage: SalaryRange | None) -> str:
-    """保留工资 → 展示文本（万/年，两端缺失返回空串；域内轻量实现不依赖 api 层）。"""
+    """最低可接受薪资 → 展示文本（万/年，两端缺失返回空串；域内轻量实现不依赖 api 层）。"""
     if wage is None:
         return ""
     lo, hi = wage.min_annual, wage.max_annual

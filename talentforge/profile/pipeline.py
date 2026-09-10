@@ -1,4 +1,4 @@
-"""事件→画像消费链：事件批经 LLM 推断主张 → trial claims 合并（α 待定池信号累积）。
+"""事件→画像消费链：事件批经 LLM 推断主张 → trial claims 合并（α 待确认区信号累积）。
 
 与 engine.update_from_feedback 同思路：信号累积不做 LLM 相似度判断，纯文本包含
 匹配（相同文本或一方包含另一方），命中即 evidence_count+1 并追加来源。
@@ -74,7 +74,7 @@ def _merge_claims(
 
 
 class ProfileUpdatePipeline:
-    """事件批 → trial claims 的信号累积管道（α 待定池）。"""
+    """事件批 → trial claims 的信号累积管道（α 待确认区）。"""
 
     def __init__(self, llm: LLMClient, engine: ProfileEngine | None = None) -> None:
         self._llm = llm

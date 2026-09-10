@@ -1,29 +1,29 @@
 /* =========================================================
    TalentForge 画像面板视图（#profile）
-   - 四 tab（待定池/叙事/效用/结构位置）：tablist/tab/tabpanel
+   - 四 tab（待确认/叙事/效用/结构位置）：tablist/tab/tabpanel
      ARIA 模式（DESIGN.md §7），纯前端切换，与路由无关
-   - 待定池：narrative_claims 中 trial 态渲染 ClaimCard（结构
+   - 待确认：narrative_claims 中 trial 态渲染 ClaimCard（结构
      同 chat.js：status-pill--trial + 置信 + 证据数 + EvidenceChain
      details + 确认/驳回按钮）；confirm→active（evidence_count+1）、
-     reject→archived，fixtures 模式本地乐观更新 + 更新顶部待定池
+     reject→archived，fixtures 模式本地乐观更新 + 更新顶部待确认
      计数，真模式调端点；active/archived 进折叠区
    - 叙事轨：identity（衬线大字引言）+ values（标签 pill 组）
      + deep_drives（列表）
     - 效用轨：utility_preferences 逐条渲染（attribute + ordering
       排序，如 薪资：40万以上 > 30-40万 > 20-30万；evidence 非空时
       追加小字"（含 N 次决策回流）"，M4 反馈闭环）
-   - 结构位置：D17 八格卡片网格（2 列，>1024px 3 列）+ 剥削敏感带
-     /再生产账单/流动性区块；market_assessment 存在即标注"待数据积累"
+   - 结构位置：D17 八格卡片网格（2 列，>1024px 3 列）+ 工作底线
+     /生活成本/退路区块；market_assessment 存在即标注"待数据积累"
      （D17 市场侧灰置，用户只填自己那半）
     - 简历校对：profile.resume_review 存在则渲染 抽取 vs 原文 diff
       视图（逐项确认）；fixtures 模式 mock 示例区块；否则"未上传简历"
-    - 作品主张区（M5 §1.3/§5，待定池上方独立 section#work-section）：
+    - 作品主张区（M5 §1.3/§5，待确认区上方独立 section#work-section）：
       拉 /api/work/artifacts 渲染作品卡（grade 徽章 strong=active/
       normal=trial/weak=archived 复用 + facts 摘要 + grade_reasons +
       外链 + 入画像/驳回）；fixtures 模式用 LOCAL_WORK_FIXTURES；
       入画像 POST /api/work/claims、驳回 POST /api/work/dismiss
     - 导出 JSON：fixtures 模式本地 Blob 下载；真模式 GET /profile/export
-   - 顶部待定池计数：与 chat.js 同计算（profile.narrative_claims 中
+   - 顶部待确认计数：与 chat.js 同计算（profile.narrative_claims 中
      trial 态主张数），写入共享 #pending-count 徽章
    渲染函数为纯字符串输出（文本一律 esc 转义），DOM 层通过 <template>
    解析后挂载，便于 node:test 直接断言。
@@ -209,7 +209,7 @@ const TalentForgeProfile = (() => {
   <section class="work-section" id="work-section" aria-label="作品主张"></section>
 
   <div class="profile-tabs" id="profile-tabs" role="tablist" aria-label="画像区块">
-    <button class="profile-tab is-active" type="button" role="tab" id="tab-pool" aria-selected="true" aria-controls="panel-pool" data-tab="pool">待定池</button>
+    <button class="profile-tab is-active" type="button" role="tab" id="tab-pool" aria-selected="true" aria-controls="panel-pool" data-tab="pool">待确认</button>
     <button class="profile-tab" type="button" role="tab" id="tab-narrative" aria-selected="false" aria-controls="panel-narrative" data-tab="narrative">叙事</button>
     <button class="profile-tab" type="button" role="tab" id="tab-utility" aria-selected="false" aria-controls="panel-utility" data-tab="utility">效用</button>
     <button class="profile-tab" type="button" role="tab" id="tab-structural" aria-selected="false" aria-controls="panel-structural" data-tab="structural">结构位置</button>
@@ -259,7 +259,7 @@ const TalentForgeProfile = (() => {
 
   /* ---------- 纯计算/渲染函数（测试可直接断言） ---------- */
 
-  /** 待定池计数：profile.narrative_claims 中 trial 态主张数（同 chat.js 语义）。 */
+  /** 待确认计数：profile.narrative_claims 中 trial 态主张数（同 chat.js 语义）。 */
   function countTrialClaims(claims) {
     let n = 0;
     for (const c of claims || []) {
@@ -346,7 +346,7 @@ const TalentForgeProfile = (() => {
         </article>`;
   }
 
-  /** 待定池 tab：trial 列表 + active/archived 折叠区。 */
+  /** 待确认 tab：trial 列表 + active/archived 折叠区。 */
   function renderPoolTab(claims) {
     const list = Array.isArray(claims) ? claims : [];
     const trial = list.filter((c) => c && c.state === "trial");
@@ -436,7 +436,7 @@ const TalentForgeProfile = (() => {
         </ul>`;
   }
 
-  /** 剥削敏感带：每条 stance 语义化（never → 硬边界不可妥协）。 */
+  /** 工作底线：每条 stance 语义化（never → 硬边界不可妥协）。 */
   function renderRedlines(list) {
     return `<ul class="eight-block__list">${(Array.isArray(list) ? list : []).map((r) => {
       const stance = r.stance === "never" ? "硬边界 · 不可妥协" : esc(r.stance || "");
@@ -483,7 +483,7 @@ const TalentForgeProfile = (() => {
       { key: "support_network", label: "支持网络" },
       { key: "economic_independence", label: "经济独立" },
       { key: "family_payback", label: "家庭反哺" },
-      { key: "reservation_wage", label: "定价底牌" },
+      { key: "reservation_wage", label: "最低可接受薪资" },
     ];
     const grid = cells
       .map(({ key, label }) => {
@@ -499,9 +499,9 @@ const TalentForgeProfile = (() => {
       .join("");
 
     const extras = [];
-    if (s.exploitation_redlines) extras.push(renderBlock("剥削敏感带", renderRedlines(s.exploitation_redlines)));
-    if (s.reproduction_costs) extras.push(renderBlock("再生产账单", renderReproduction(s.reproduction_costs)));
-    if (s.mobility) extras.push(renderBlock("流动性与时点", renderMobility(s.mobility)));
+    if (s.exploitation_redlines) extras.push(renderBlock("工作底线", renderRedlines(s.exploitation_redlines)));
+    if (s.reproduction_costs) extras.push(renderBlock("生活成本", renderReproduction(s.reproduction_costs)));
+    if (s.mobility) extras.push(renderBlock("退路与时机", renderMobility(s.mobility)));
     const extrasHtml = extras.length
       ? `<div class="structural__extras">${extras.join("")}</div>`
       : "";
@@ -650,7 +650,7 @@ const TalentForgeProfile = (() => {
         </article>`;
   }
 
-  /** 作品主张区块（待定池 tab 上方独立 section#work-section 的内容）。 */
+  /** 作品主张区块（待确认 tab 上方独立 section#work-section 的内容）。 */
   function renderWorkSection(artifacts, dismissed, claimed) {
     const list = Array.isArray(artifacts) ? artifacts : [];
     const dismissedSet = new Set(Array.isArray(dismissed) ? dismissed : []);
@@ -849,9 +849,9 @@ const TalentForgeProfile = (() => {
   function updatePendingCount() {
     const n = countTrialClaims((state.profile && state.profile.narrative_claims) || []);
     const badge = document.getElementById("pending-count");
-    if (badge) badge.textContent = `待定池 ${n}`;
+    if (badge) badge.textContent = `待确认 ${n}`;
     const tabBtn = document.getElementById("tab-pool");
-    if (tabBtn) tabBtn.textContent = n ? `待定池 (${n})` : "待定池";
+    if (tabBtn) tabBtn.textContent = n ? `待确认 (${n})` : "待确认";
   }
 
   function findClaim(claimId) {

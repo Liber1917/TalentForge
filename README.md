@@ -53,7 +53,7 @@ python -m uvicorn talentforge.api.app:create_app --factory --port 8420
 |---|---|---|
 | 对话首页 | `#/chat` | 陪伴入口：聊天 + 内嵌卡片（DecisionCard/ClaimCard/RiskNote/ReflectivePrompt），触发决策、沉淀 trial 主张、反思写回画像 |
 | 决策工作台 | `#/jobs` | 岗位三态列表（apply/hold/skip）+ 筛选 + 详情（理由链/风险/gap 补短板）+ 生成报告 + 记录投递行为 |
-| 画像面板 | `#/profile` | 待定池主张确认/驳回 + 叙事/效用双轨 + 八格结构位置 + 作品主张（强/普通/弱徽章）+ 简历校对 + 导出 |
+| 画像面板 | `#/profile` | 待确认主张确认/驳回 + 叙事/效用双轨 + 八格结构位置 + 作品主张（强/普通/弱徽章）+ 简历校对 + 导出 |
 | 平台源 | `#/sources` | Boss 采集配置 + GitHub/Gitee/arXiv 作品源拉取 |
 | 探索器 | `#/explore` | 方向卡快照 → 交叉方向识别（诚实降置信）→ 跳对话深谈 |
 | LLM 设置 | `#/llm` | base_url/model/api_key 配置（掩码读回，永不回传明文）+ 连接测试 |

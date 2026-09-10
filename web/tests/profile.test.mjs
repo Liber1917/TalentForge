@@ -1,7 +1,7 @@
 /* =========================================================
    profile.js 渲染断言（node:test + vm，无第三方依赖）
    在 Node 中加载 web/js/views/profile.js（纯渲染函数），
-   用 fixture 数据断言三轨内容 / 待定池 ClaimCard / 八格 /
+   用 fixture 数据断言三轨内容 / 待确认 ClaimCard / 八格 /
    diff 视图 / 转义 / 防御性。
    运行：node --test web/tests/profile.test.mjs
    ========================================================= */
@@ -18,7 +18,7 @@ const Profile = globalThis.TalentForgeProfile;
 
 const FIXTURE = Profile.LOCAL_FIXTURE_PROFILE;
 
-/* ---------- 待定池 tab ---------- */
+/* ---------- 待确认 tab ---------- */
 
 test("renderPoolTab trial 主张渲染 ClaimCard 含确认/驳回按钮与置信", () => {
   const html = Profile.renderPoolTab(FIXTURE.narrative_claims);
@@ -130,7 +130,7 @@ test("renderUtilityTab evidence 非空追加决策回流小字；空数组/缺�
 
 /* ---------- 结构位置 ---------- */
 
-test("renderStructuralTab 八格标签齐全 + 保留工资格式化", () => {
+test("renderStructuralTab 八格标签齐全 + 最低可接受薪资格式化", () => {
   const html = Profile.renderStructuralTab(FIXTURE.structural_position);
   for (const label of [
     "现金流缓冲",
@@ -140,7 +140,7 @@ test("renderStructuralTab 八格标签齐全 + 保留工资格式化", () => {
     "支持网络",
     "经济独立",
     "家庭反哺",
-    "定价底牌",
+    "最低可接受薪资",
   ]) {
     assert.match(html, new RegExp(label), `应含八格标签 ${label}`);
   }
@@ -151,15 +151,15 @@ test("renderStructuralTab 八格标签齐全 + 保留工资格式化", () => {
   assert.match(html, /2 名前同事在内推圈/);
 });
 
-test("renderStructuralTab 附加区块（剥削敏感带/再生产账单/流动性）", () => {
+test("renderStructuralTab 附加区块（工作底线/生活成本/退路与时机）", () => {
   const html = Profile.renderStructuralTab(FIXTURE.structural_position);
-  assert.match(html, />剥削敏感带</);
+  assert.match(html, />工作底线</);
   assert.match(html, /硬边界 · 不可妥协/);
   assert.match(html, /996/);
-  assert.match(html, />再生产账单</);
+  assert.match(html, />生活成本</);
   assert.match(html, /月租 3500/);
   assert.match(html, /技能半衰期/);
-  assert.match(html, />流动性与时点</);
+  assert.match(html, />退路与时机</);
   assert.match(html, /敢裸辞/);
   assert.match(html, /骑驴找马/);
 });
@@ -248,7 +248,7 @@ test("esc / clip / fmtAt 工具行为正确", () => {
   assert.equal(Profile.fmtAt(""), "");
 });
 
-test("fmtValue 格式化 布尔/数组/对象/保留工资", () => {
+test("fmtValue 格式化 布尔/数组/对象/薪资区间", () => {
   assert.equal(Profile.fmtValue(false), "否");
   assert.equal(Profile.fmtValue(["深圳", "珠三角"]), "深圳、珠三角");
   assert.equal(Profile.fmtValue({ min_annual: 300000, max_annual: 350000, currency: "CNY" }), "¥30–35万/年（CNY）");
@@ -399,7 +399,7 @@ test("partials/profile.html 与 FALLBACK_PARTIAL 含独立 work-section 骨架�
     assert.match(doc, /aria-label="作品主张"/);
     assert.ok(
       doc.indexOf('id="work-section"') < doc.indexOf('id="profile-tabs"'),
-      "作品主张区应位于待定池 tab 上方",
+      "作品主张区应位于待确认 tab 上方",
     );
   }
 });

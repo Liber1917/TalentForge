@@ -31,7 +31,7 @@ const TalentForgeChat = (() => {
     system: "系统",
   };
   /* 方向探索深谈接续（M7）：localStorage tf_deep_dive_card 的 scope 口径中文 */
-  const EXPLORE_SCOPE_LABEL = { track: "赛道", lifestyle: "活法", field: "场域" };
+  const EXPLORE_SCOPE_LABEL = { track: "赛道", lifestyle: "活法", field: "行业" };
   const DEEP_DIVE_KEY = "tf_deep_dive_card";
 
   /* ---------- 离线假数据：镜像 talentforge/api/fixtures.py get_fixture_chat ---------- */
@@ -73,7 +73,7 @@ const TalentForgeChat = (() => {
             salary: "15-25K",
           },
           verdict: "skip",
-          reason: "薪资低于你的保留工资，且含竞业限制条款，与硬边界直接冲突。",
+          reason: "薪资低于你的最低可接受薪资，且含竞业限制条款，与硬边界直接冲突。",
           risk_hits: [{ key: "竞业限制", label: "竞业限制条款" }],
           reflective_question: "",
           evidence: [
@@ -98,7 +98,7 @@ const TalentForgeChat = (() => {
           type: "risk",
           key: "996",
           label: "996 工作制",
-          why: "996 意味着劳动时间被系统性延长——超出法定工时的部分通常不支付对价，长期会压缩你的再生产时间（睡眠/学习/社交）。这不是道德判断，是你需要知情权衡的事实。",
+          why: "996 意味着劳动时间被系统性延长——超时部分通常拿不到加班费，长期会压缩你恢复和成长的时间（睡眠/学习/社交）。这不是道德判断，是你需要知情权衡的事实。",
         },
         {
           type: "claim",
@@ -550,7 +550,7 @@ const TalentForgeChat = (() => {
   function updatePendingCount() {
     const el = document.getElementById("pending-count");
     if (!el) return;
-    el.textContent = `待定池 ${countTrialClaims(state.turns)}`;
+    el.textContent = `待确认 ${countTrialClaims(state.turns)}`;
   }
 
   function findClaimInState(claimId) {

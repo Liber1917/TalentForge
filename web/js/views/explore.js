@@ -23,7 +23,7 @@
 
 const TalentForgeExplore = (() => {
   /* ---------- 标签映射 ---------- */
-  const SCOPE_LABEL = { track: "赛道", lifestyle: "活法", field: "场域" };
+  const SCOPE_LABEL = { track: "赛道", lifestyle: "活法", field: "行业" };
   /* why_you 证据种类（domain/direction.py EvidenceRef.kind） */
   const KIND_LABEL = { work: "作品", profile: "画像", behavior: "行为", dialogue: "对话" };
 
@@ -83,7 +83,7 @@ const TalentForgeExplore = (() => {
       ],
       market_evidence: "推理·置信中：同技能包在上海溢价约 20-30%、新一线生活成本低约 30%——跨城重定价基于行业常识推断，非岗位库实测",
       data_backed: false,
-      distance: "若迁新一线：内推网络需重建（约 2-3 个月），再生产成本同步下降",
+      distance: "若迁新一线：内推网络需重建（约 2-3 个月），生活成本同步下降",
       first_step: "各挑 5 个上海/新一线目标岗，用同一份画像分别生成报告，对比结论差异",
       constraint_check: ["海外远程岗的市场判断不可验证（Boss 数据只覆盖国内），决策需另找数据源"],
       confidence: 0.55,
@@ -131,7 +131,7 @@ const TalentForgeExplore = (() => {
 <div class="explore-layout">
   <header class="explore-head">
     <h2 class="explore-head__title">方向探索</h2>
-    <p class="explore-head__hint">基于已有画像、作品与决策历史，向可能性空间搜索——先快照看全景，再挑一张深谈（三口径：赛道/活法/场域）</p>
+    <p class="explore-head__hint">基于已有画像、作品与决策历史，向可能性空间搜索——先快照看全景，再挑一张深谈（三口径：赛道/活法/行业）</p>
   </header>
   <details class="explore-brief" id="explore-brief">
     <summary class="explore-brief__summary">${BRIEF_SUMMARY_TEXT}</summary>
@@ -237,7 +237,7 @@ const TalentForgeExplore = (() => {
           ${renderBriefGroup("技能簇（作品语言分布）", clusters)}
           ${renderBriefGroup("强信号（强作品 + 已确认主张）", brief.strong_signals)}
           ${renderBriefGroup("行为兴趣（待验证主张）", brief.behavior_interests)}
-          ${renderBriefGroup("硬边界（deal breakers + 剥削敏感带）", hardLines)}
+          ${renderBriefGroup("硬边界与工作底线", hardLines)}
         </div>
         <p class="explore-brief__note">盘点有误？去 <a href="#/profile">画像页</a> 纠错后再生成，快照质量取决于这份底账。</p>`;
   }
